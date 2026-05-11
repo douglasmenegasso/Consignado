@@ -10,102 +10,93 @@
 <title>Consignado App</title>
 <script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
 <style>
-  :root {
-    --bg:#0f0f12; --bg2:#18181f; --bg3:#22222c; --surface:#1e1e28;
-    --border:#2e2e3d; --accent:#6c63ff; --accent2:#a78bfa;
-    --green:#22c55e; --red:#ef4444; --amber:#f59e0b;
-    --text:#f0f0f5; --text2:#9999b3; --text3:#5a5a75;
-    --radius:14px; --radius-sm:8px;
-    --font:'SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  }
-  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-  html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);overflow:hidden;}
-  #app{display:flex;flex-direction:column;height:100dvh;}
-  .header{background:var(--bg2);border-bottom:1px solid var(--border);padding:12px 16px;flex-shrink:0;}
-  .header-title{font-size:18px;font-weight:700;letter-spacing:-0.4px;}
-  .header-sub{font-size:12px;color:var(--text2);margin-top:1px;}
-  .content{flex:1;overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch;}
-  .nav{background:var(--bg2);border-top:1px solid var(--border);display:flex;flex-shrink:0;}
-  .nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 4px 12px;cursor:pointer;border:none;background:none;color:var(--text2);font-size:10px;font-family:var(--font);transition:color .15s;}
-  .nav-btn.active{color:var(--accent2);}
-  .nav-btn .icon{font-size:22px;}
-  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px;}
-  .card-title{font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px;}
-  .btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 20px;border-radius:var(--radius-sm);font-size:15px;font-weight:600;font-family:var(--font);cursor:pointer;border:none;transition:all .15s;width:100%;}
-  .btn:active{transform:scale(0.97);}
-  .btn-primary{background:var(--accent);color:#fff;}
-  .btn-green{background:var(--green);color:#fff;}
-  .btn-red{background:var(--red);color:#fff;}
-  .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text);}
-  .btn-sm{padding:8px 14px;font-size:13px;width:auto;}
-  .form-group{margin-bottom:14px;}
-  .form-label{font-size:13px;color:var(--text2);margin-bottom:6px;display:block;}
-  .form-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;font-size:16px;color:var(--text);font-family:var(--font);outline:none;transition:border-color .15s;}
-  .form-input:focus{border-color:var(--accent);}
-  .form-input::placeholder{color:var(--text3);}
-  /* Scanner */
-  .scan-box{position:relative;border-radius:var(--radius);overflow:hidden;background:#000;aspect-ratio:4/3;margin-bottom:4px;}
-  .scan-box video{width:100%;height:100%;object-fit:cover;display:block;}
-  .scan-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;}
-  .scan-frame{width:58%;height:58%;position:relative;}
-  .sc{position:absolute;width:22px;height:22px;border-color:var(--accent2);border-style:solid;}
-  .sc.tl{top:0;left:0;border-width:3px 0 0 3px;border-radius:4px 0 0 0;}
-  .sc.tr{top:0;right:0;border-width:3px 3px 0 0;border-radius:0 4px 0 0;}
-  .sc.bl{bottom:0;left:0;border-width:0 0 3px 3px;border-radius:0 0 0 4px;}
-  .sc.br{bottom:0;right:0;border-width:0 3px 3px 0;border-radius:0 0 4px 0;}
-  .scan-line{position:absolute;width:100%;height:2px;background:linear-gradient(90deg,transparent,var(--accent2),transparent);animation:scanline 2s linear infinite;top:0;}
-  @keyframes scanline{0%{top:0}100%{top:100%}}
-  .scan-status{text-align:center;font-size:14px;color:var(--text2);margin-bottom:12px;}
-  /* Items */
-  .item-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);}
-  .item-row:last-child{border-bottom:none;}
-  .item-icon{width:40px;height:40px;border-radius:var(--radius-sm);background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
-  .item-info{flex:1;min-width:0;}
-  .item-name{font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .item-code{font-size:12px;color:var(--text2);font-family:monospace;margin-top:2px;}
-  .item-price{font-size:16px;font-weight:700;color:var(--green);flex-shrink:0;}
-  /* Client card */
-  .client-card{background:var(--bg3);border-radius:var(--radius-sm);padding:12px 14px;display:flex;align-items:center;gap:12px;margin-bottom:8px;cursor:pointer;border:1px solid transparent;transition:border-color .15s;}
-  .client-card:hover{border-color:var(--accent);}
-  .client-avatar{width:44px;height:44px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;flex-shrink:0;color:#fff;}
-  .client-name{font-size:15px;font-weight:600;}
-  .client-phone{font-size:13px;color:var(--text2);margin-top:2px;}
-  .client-total{font-size:13px;color:var(--green);font-weight:600;}
-  /* Modal */
-  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:flex-end;z-index:100;animation:fadeIn .15s;}
-  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-  .modal{background:var(--bg2);border-radius:var(--radius) var(--radius) 0 0;width:100%;padding:20px;padding-bottom:calc(20px + env(safe-area-inset-bottom));max-height:90dvh;overflow-y:auto;animation:slideUp .2s;}
-  @keyframes slideUp{from{transform:translateY(40px)}to{transform:translateY(0)}}
-  .modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 20px;}
-  .modal-title{font-size:20px;font-weight:700;margin-bottom:6px;}
-  .modal-sub{font-size:14px;color:var(--text2);margin-bottom:20px;}
-  /* Toast */
-  .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--border);border-radius:30px;padding:10px 20px;font-size:14px;font-weight:500;z-index:200;white-space:nowrap;animation:toastIn .2s;}
-  @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
-  .toast.success{border-color:var(--green);color:var(--green);}
-  .toast.error{border-color:var(--red);color:var(--red);}
-  /* Total bar */
-  .total-bar{background:var(--bg2);border-top:1px solid var(--border);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
-  .total-label{font-size:14px;color:var(--text2);}
-  .total-value{font-size:24px;font-weight:800;color:var(--green);letter-spacing:-0.5px;}
-  /* Empty */
-  .empty{text-align:center;padding:48px 24px;color:var(--text2);}
-  .empty .icon{font-size:48px;margin-bottom:12px;}
-  .empty p{font-size:15px;}
-  /* Qty */
-  .qty-ctrl{display:flex;align-items:center;gap:10px;}
-  .qty-btn{width:30px;height:30px;border-radius:50%;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
-  .qty-num{font-size:15px;font-weight:700;min-width:20px;text-align:center;}
-  /* Mode bar */
-  .mode-bar{display:flex;background:var(--bg3);border-radius:var(--radius-sm);padding:4px;gap:4px;margin-bottom:16px;}
-  .mode-opt{flex:1;padding:8px;border-radius:6px;border:none;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;background:none;color:var(--text2);transition:all .15s;}
-  .mode-opt.active{background:var(--accent);color:#fff;}
-  .divider{height:1px;background:var(--border);margin:16px 0;}
-  .row{display:flex;gap:10px;}
-  .row .form-group{flex:1;}
-  ::-webkit-scrollbar{width:4px;}
-  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
-  .scan-icon-btn{flex-shrink:0;width:44px;height:44px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+:root{
+  --bg:#0f0f12;--bg2:#18181f;--bg3:#22222c;--surface:#1e1e28;
+  --border:#2e2e3d;--accent:#6c63ff;--accent2:#a78bfa;
+  --green:#22c55e;--red:#ef4444;--amber:#f59e0b;
+  --text:#f0f0f5;--text2:#9999b3;--text3:#5a5a75;
+  --radius:14px;--radius-sm:8px;
+  --font:'SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);overflow:hidden;}
+#app{display:flex;flex-direction:column;height:100dvh;}
+.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:12px 16px;flex-shrink:0;}
+.header-title{font-size:18px;font-weight:700;letter-spacing:-0.4px;}
+.header-sub{font-size:12px;color:var(--text2);margin-top:1px;}
+.content{flex:1;overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch;}
+.nav{background:var(--bg2);border-top:1px solid var(--border);display:flex;flex-shrink:0;}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 2px 12px;cursor:pointer;border:none;background:none;color:var(--text2);font-size:9px;font-family:var(--font);transition:color .15s;}
+.nav-btn.active{color:var(--accent2);}
+.nav-btn .icon{font-size:20px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px;}
+.card-title{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px;}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 20px;border-radius:var(--radius-sm);font-size:15px;font-weight:600;font-family:var(--font);cursor:pointer;border:none;transition:all .15s;width:100%;}
+.btn:active{transform:scale(0.97);}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-green{background:var(--green);color:#fff;}
+.btn-red{background:var(--red);color:#fff;}
+.btn-amber{background:var(--amber);color:#000;}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text);}
+.btn-sm{padding:8px 14px;font-size:13px;width:auto;}
+.form-group{margin-bottom:14px;}
+.form-label{font-size:13px;color:var(--text2);margin-bottom:6px;display:block;}
+.form-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;font-size:16px;color:var(--text);font-family:var(--font);outline:none;transition:border-color .15s;}
+.form-input:focus{border-color:var(--accent);}
+.form-input::placeholder{color:var(--text3);}
+.scan-box{position:relative;border-radius:var(--radius);overflow:hidden;background:#000;aspect-ratio:4/3;margin-bottom:4px;}
+.scan-box video{width:100%;height:100%;object-fit:cover;display:block;}
+.scan-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;}
+.scan-frame{width:58%;height:58%;position:relative;}
+.sc{position:absolute;width:22px;height:22px;border-color:var(--accent2);border-style:solid;}
+.sc.tl{top:0;left:0;border-width:3px 0 0 3px;border-radius:4px 0 0 0;}
+.sc.tr{top:0;right:0;border-width:3px 3px 0 0;border-radius:0 4px 0 0;}
+.sc.bl{bottom:0;left:0;border-width:0 0 3px 3px;border-radius:0 0 0 4px;}
+.sc.br{bottom:0;right:0;border-width:0 3px 3px 0;border-radius:0 0 4px 0;}
+.scan-line{position:absolute;width:100%;height:2px;background:linear-gradient(90deg,transparent,var(--accent2),transparent);animation:scanline 2s linear infinite;}
+@keyframes scanline{0%{top:0}100%{top:100%}}
+.cam-overlay{position:absolute;inset:0;background:rgba(15,15,18,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;text-align:center;border-radius:var(--radius);}
+.item-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+.item-row:last-child{border-bottom:none;}
+.item-icon{width:38px;height:38px;border-radius:var(--radius-sm);background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.item-info{flex:1;min-width:0;}
+.item-name{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.item-sub{font-size:11px;color:var(--text2);margin-top:2px;}
+.item-price{font-size:15px;font-weight:700;color:var(--green);flex-shrink:0;}
+.client-card{background:var(--bg3);border-radius:var(--radius-sm);padding:12px 14px;display:flex;align-items:center;gap:12px;margin-bottom:8px;cursor:pointer;border:1px solid transparent;transition:border-color .15s;}
+.client-card:active{border-color:var(--accent);}
+.avatar{border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;flex-shrink:0;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:flex-end;z-index:100;animation:fadeIn .15s;}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{background:var(--bg2);border-radius:var(--radius) var(--radius) 0 0;width:100%;padding:20px;padding-bottom:calc(20px + env(safe-area-inset-bottom));max-height:90dvh;overflow-y:auto;animation:slideUp .2s;}
+@keyframes slideUp{from{transform:translateY(40px)}to{transform:translateY(0)}}
+.modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 20px;}
+.modal-title{font-size:20px;font-weight:700;margin-bottom:6px;}
+.modal-sub{font-size:14px;color:var(--text2);margin-bottom:16px;line-height:1.5;}
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--border);border-radius:30px;padding:10px 20px;font-size:14px;font-weight:500;z-index:200;white-space:nowrap;animation:toastIn .2s;pointer-events:none;}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+.toast.ok{border-color:var(--green);color:var(--green);}
+.toast.err{border-color:var(--red);color:var(--red);}
+.toast.info{border-color:var(--accent2);color:var(--accent2);}
+.total-bar{background:var(--bg2);border-top:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.empty{text-align:center;padding:40px 24px;color:var(--text2);}
+.empty .icon{font-size:44px;margin-bottom:10px;}
+.qty-ctrl{display:flex;align-items:center;gap:8px;}
+.qty-btn{width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:17px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+.qty-num{font-size:14px;font-weight:700;min-width:18px;text-align:center;}
+.mode-bar{display:flex;background:var(--bg3);border-radius:var(--radius-sm);padding:4px;gap:4px;margin-bottom:14px;}
+.mode-opt{flex:1;padding:8px;border-radius:6px;border:none;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;background:none;color:var(--text2);transition:all .15s;}
+.mode-opt.active{background:var(--accent);color:#fff;}
+.divider{height:1px;background:var(--border);margin:14px 0;}
+.row{display:flex;gap:10px;}
+.row .form-group{flex:1;}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.4px;}
+.badge-amber{background:rgba(245,158,11,.15);color:var(--amber);}
+.badge-green{background:rgba(34,197,94,.15);color:var(--green);}
+.scan-icon-btn{flex-shrink:0;width:44px;height:44px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.section-label{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;}
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
 </style>
 </head>
 <body>
@@ -114,7 +105,7 @@
     <div class="header-title">📦 Consignado</div>
     <div class="header-sub" id="header-sub">Selecione um cliente para iniciar</div>
   </div>
-  <div class="content" id="main-content"></div>
+  <div class="content" id="content"></div>
   <div id="total-slot"></div>
   <div class="nav">
     <button class="nav-btn active" id="nav-scan"     onclick="showTab('scan')">    <span class="icon">⚡</span>Escanear</button>
@@ -128,35 +119,123 @@
 <div id="toast-root"></div>
 
 <script>
-// ── STATE ────────────────────────────────────────────────────────────────────
-let state = {
-  products: JSON.parse(localStorage.getItem('csn_products') || '{}'),
-  clients:  JSON.parse(localStorage.getItem('csn_clients')  || '{}'),
-  orders:   JSON.parse(localStorage.getItem('csn_orders')   || '{}'),
-  closed:   JSON.parse(localStorage.getItem('csn_closed')   || '[]'),
-  activeClient: null,
-  scanMode: 'sale',
-  currentTab: 'scan'
+// ══════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════
+const DB = {
+  load(k, def){ try{ return JSON.parse(localStorage.getItem(k)) ?? def; }catch{ return def; } },
+  save(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
 };
-function save() {
-  localStorage.setItem('csn_products', JSON.stringify(state.products));
-  localStorage.setItem('csn_clients',  JSON.stringify(state.clients));
-  localStorage.setItem('csn_orders',   JSON.stringify(state.orders));
-  localStorage.setItem('csn_closed',   JSON.stringify(state.closed));
+
+let S = {
+  products:      DB.load('csn_products', {}),
+  clients:       DB.load('csn_clients',  {}),
+  orders:        DB.load('csn_orders',   {}),   // open orders
+  closed:        DB.load('csn_closed',   []),    // paid/closed orders
+  ghToken:       DB.load('csn_ghtoken',  ''),
+  ghRepo:        DB.load('csn_ghrepo',   ''),    // "user/repo"
+  activeClient:  null,
+  scanMode:      'sale',   // 'sale' | 'return'
+  tab:           'scan'
+};
+
+function saveLocal() {
+  DB.save('csn_products', S.products);
+  DB.save('csn_clients',  S.clients);
+  DB.save('csn_orders',   S.orders);
+  DB.save('csn_closed',   S.closed);
+  DB.save('csn_ghtoken',  S.ghToken);
+  DB.save('csn_ghrepo',   S.ghRepo);
 }
 
-// ── UTILS ────────────────────────────────────────────────────────────────────
-function fmt(v)     { return 'R$ ' + Number(v).toFixed(2).replace('.', ','); }
-function initials(n){ return n.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase(); }
+// ══════════════════════════════════════════════════════════
+// GITHUB SYNC
+// ══════════════════════════════════════════════════════════
+const GH_FILE = 'dados.json';
 
-function toast(msg, type='success') {
+async function ghRequest(method, path, body) {
+  if (!S.ghToken || !S.ghRepo) return null;
+  const res = await fetch(`https://api.github.com/repos/${S.ghRepo}/contents/${path}`, {
+    method,
+    headers: {
+      'Authorization': `token ${S.ghToken}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/vnd.github.v3+json'
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
+  return res.json();
+}
+
+async function ghLoad() {
+  if (!S.ghToken || !S.ghRepo) return false;
+  try {
+    const file = await ghRequest('GET', GH_FILE);
+    const data = JSON.parse(atob(file.content.replace(/\n/g, '')));
+    S.products = data.products || {};
+    S.clients  = data.clients  || {};
+    S.orders   = data.orders   || {};
+    S.closed   = data.closed   || [];
+    saveLocal();
+    return true;
+  } catch(e) {
+    if (e.message && e.message.includes('Not Found')) return false; // file doesn't exist yet
+    throw e;
+  }
+}
+
+async function ghSave() {
+  if (!S.ghToken || !S.ghRepo) return;
+  const data = { products: S.products, clients: S.clients, orders: S.orders, closed: S.closed, savedAt: new Date().toISOString() };
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+  // Get current SHA if file exists
+  let sha;
+  try { const f = await ghRequest('GET', GH_FILE); sha = f.sha; } catch(e) {}
+  await ghRequest('PUT', GH_FILE, {
+    message: `Sync ${new Date().toLocaleString('pt-BR')}`,
+    content,
+    ...(sha ? { sha } : {})
+  });
+}
+
+async function syncGitHub(showFeedback = true) {
+  if (!S.ghToken || !S.ghRepo) {
+    if (showFeedback) toast('Configure o GitHub nas ⚙️ Configurações', 'info');
+    return;
+  }
+  if (showFeedback) toast('Sincronizando com GitHub…', 'info');
+  try {
+    await ghSave();
+    if (showFeedback) toast('✓ Sincronizado com GitHub!', 'ok');
+  } catch(e) {
+    toast('Erro ao sincronizar: ' + e.message, 'err');
+  }
+}
+
+// Auto-sync after every save
+async function save() {
+  saveLocal();
+  syncGitHub(false);
+}
+
+// ══════════════════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════════════════
+function fmt(v)     { return 'R$ ' + Number(v||0).toFixed(2).replace('.', ','); }
+function initials(n){ return (n||'?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase(); }
+function fmtDate(iso){ return new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+
+function toast(msg, type='ok') {
   const el = document.createElement('div');
-  el.className = 'toast ' + type;
+  el.className = `toast ${type}`;
   el.textContent = msg;
   document.getElementById('toast-root').appendChild(el);
-  setTimeout(() => el.remove(), 2800);
+  setTimeout(() => el.remove(), 3000);
 }
+
 function showModal(html) {
+  closeModal();
   document.getElementById('modal-root').innerHTML =
     `<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">${html}</div></div>`;
 }
@@ -165,327 +244,262 @@ function closeModal() {
   document.getElementById('modal-root').innerHTML = '';
 }
 
-// ── SCANNER ENGINE ────────────────────────────────────────────────────────────
-// Canvas-based loop: captura frames do vídeo e decodifica via
-// BarcodeDetector (nativo, Chrome/Android) ou ZXing (iOS/Firefox).
-// Um único stream por vez — para antes de iniciar outro.
-
-let _stream   = null;
-let _running  = false;
-let _rafId    = null;
-let _canvas   = null;
-let _ctx      = null;
-let _zxHints  = null;
+// ══════════════════════════════════════════════════════════
+// SCANNER ENGINE
+// ══════════════════════════════════════════════════════════
+let _stream=null, _running=false, _rafId=null, _canvas=null, _ctx=null, _zxHints=null;
 
 function _getCanvas() {
-  if (!_canvas) {
-    _canvas = document.createElement('canvas');
-    _ctx    = _canvas.getContext('2d', { willReadFrequently: true });
-  }
-  return { canvas: _canvas, ctx: _ctx };
+  if (!_canvas) { _canvas=document.createElement('canvas'); _ctx=_canvas.getContext('2d',{willReadFrequently:true}); }
+  return {canvas:_canvas, ctx:_ctx};
 }
 
 function _getZXHints() {
   if (!_zxHints) {
-    const hints = new Map();
-    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-      ZXing.BarcodeFormat.QR_CODE,
-      ZXing.BarcodeFormat.EAN_13,
-      ZXing.BarcodeFormat.EAN_8,
-      ZXing.BarcodeFormat.CODE_128,
-      ZXing.BarcodeFormat.CODE_39,
-      ZXing.BarcodeFormat.UPC_A,
-      ZXing.BarcodeFormat.UPC_E,
-      ZXing.BarcodeFormat.ITF,
-      ZXing.BarcodeFormat.DATA_MATRIX,
-      ZXing.BarcodeFormat.AZTEC,
-      ZXing.BarcodeFormat.PDF_417,
-      ZXing.BarcodeFormat.CODABAR,
+    const h = new Map();
+    h.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[
+      ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+      ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39, ZXing.BarcodeFormat.UPC_A,
+      ZXing.BarcodeFormat.UPC_E, ZXing.BarcodeFormat.ITF, ZXing.BarcodeFormat.DATA_MATRIX,
+      ZXing.BarcodeFormat.AZTEC, ZXing.BarcodeFormat.PDF_417, ZXing.BarcodeFormat.CODABAR
     ]);
-    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-    _zxHints = hints;
+    h.set(ZXing.DecodeHintType.TRY_HARDER, true);
+    _zxHints = h;
   }
   return _zxHints;
 }
 
 async function _stopStream() {
   _running = false;
-  if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null; }
-  if (_stream) { _stream.getTracks().forEach(t => t.stop()); _stream = null; }
-  await new Promise(r => setTimeout(r, 150));
+  if (_rafId) { cancelAnimationFrame(_rafId); _rafId=null; }
+  if (_stream) { _stream.getTracks().forEach(t=>t.stop()); _stream=null; }
+  await new Promise(r=>setTimeout(r,150));
 }
 
 async function _startScan(videoId, onCode) {
   await _stopStream();
-
   const video = document.getElementById(videoId);
-  if (!video) { console.warn('Video element not found:', videoId); return; }
+  if (!video) return;
 
   try {
     _stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
+      video: { facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720} }
     });
     video.srcObject = _stream;
-    video.setAttribute('playsinline', '');
-    video.setAttribute('muted', '');
+    video.setAttribute('playsinline','');
     video.muted = true;
     video.autoplay = true;
-
-    await new Promise((resolve, reject) => {
-      video.onloadedmetadata = () => video.play().then(resolve).catch(reject);
-      setTimeout(reject, 8000); // timeout
+    await new Promise((res,rej) => {
+      video.onloadedmetadata = () => video.play().then(res).catch(rej);
+      setTimeout(()=>rej(new Error('timeout')), 8000);
     });
-
     _running = true;
-    let _lastCode = '', _lastTime = 0;
 
-    function _emit(code) {
-      const now = Date.now();
-      if (code === _lastCode && now - _lastTime < 2500) return;
-      _lastCode = code; _lastTime = now;
-      onCode(code);
+    let _last='', _lastT=0;
+    function emit(code) {
+      const now=Date.now();
+      if (code===_last && now-_lastT<2500) return;
+      _last=code; _lastT=now; onCode(code);
     }
 
-    const { canvas, ctx } = _getCanvas();
+    const {canvas,ctx} = _getCanvas();
 
     if ('BarcodeDetector' in window) {
-      // ── Caminho nativo (Chrome Android, Edge, Samsung Browser) ──
-      const det = new BarcodeDetector({
-        formats: ['qr_code','ean_13','ean_8','code_128','code_39',
-                  'upc_a','upc_e','itf','data_matrix','aztec','pdf417','codabar']
-      });
+      const det = new BarcodeDetector({formats:['qr_code','ean_13','ean_8','code_128','code_39','upc_a','upc_e','itf','data_matrix','aztec','pdf417','codabar']});
       const loop = async () => {
         if (!_running) return;
-        try {
-          if (video.readyState >= 2) {
-            const res = await det.detect(video);
-            if (res.length) _emit(res[0].rawValue);
-          }
-        } catch(e) {}
-        if (_running) _rafId = requestAnimationFrame(loop);
+        try { if(video.readyState>=2){ const r=await det.detect(video); if(r.length) emit(r[0].rawValue); } } catch(e){}
+        if (_running) _rafId=requestAnimationFrame(loop);
       };
       _rafId = requestAnimationFrame(loop);
-
     } else {
-      // ── Fallback ZXing via canvas (iOS Safari, Firefox) ──
       const reader = new ZXing.MultiFormatReader();
       reader.setHints(_getZXHints());
-
       const loop = () => {
         if (!_running) return;
         try {
-          if (video.readyState >= 2 && video.videoWidth > 0) {
-            canvas.width  = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const luminance = new ZXing.RGBLuminanceSource(imgData.data, canvas.width, canvas.height);
-            const bitmap    = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminance));
-            try {
-              const result = reader.decode(bitmap);
-              if (result) _emit(result.getText());
-            } catch(e) { /* NotFoundException — normal, no code in frame */ }
+          if (video.readyState>=2 && video.videoWidth>0) {
+            canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+            ctx.drawImage(video,0,0,canvas.width,canvas.height);
+            const id=ctx.getImageData(0,0,canvas.width,canvas.height);
+            const lum=new ZXing.RGBLuminanceSource(id.data,canvas.width,canvas.height);
+            const bmp=new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
+            try { const r=reader.decode(bmp); if(r) emit(r.getText()); } catch(e){}
           }
-        } catch(e) {}
-        if (_running) _rafId = requestAnimationFrame(loop);
+        } catch(e){}
+        if (_running) _rafId=requestAnimationFrame(loop);
       };
       _rafId = requestAnimationFrame(loop);
     }
-
-  } catch (err) {
+  } catch(err) {
     _running = false;
-    console.error('Camera error:', err);
-    if (err.name === 'NotAllowedError') {
-      _showCamOverlay(
-        'O navegador bloqueou o acesso à câmera.<br><br>' +
-        'Toque em <strong>"Permitir câmera"</strong> quando o navegador perguntar, ou verifique as permissões:<br><br>' +
-        '📱 <strong>Android:</strong> toque no ícone 🔒 na barra de endereço → Permissões → Câmera<br>' +
-        '🍎 <strong>iPhone:</strong> Ajustes → Safari → Câmera → Perguntar ou Permitir',
-        true
-      );
-    } else {
-      _showCamOverlay('Câmera não disponível: ' + err.message, false);
-    }
+    const denied = err.name==='NotAllowedError';
+    const msg = denied
+      ? 'Câmera bloqueada pelo navegador.<br><br>📱 <b>Android:</b> toque no 🔒 → Permissões → Câmera<br>🍎 <b>iPhone:</b> Ajustes → Safari → Câmera → Permitir'
+      : 'Câmera não disponível: ' + err.message;
+    _showCamOverlay(msg, denied);
   }
 }
 
-// ── MAIN SCANNER (scan tab) ───────────────────────────────────────────────────
-function _showCamOverlay(msg, showBtn = true) {
-  const overlay = document.getElementById('cam-overlay');
-  const msgEl   = document.getElementById('cam-msg');
-  const btn     = document.getElementById('cam-btn');
-  if (!overlay) return;
-  overlay.style.display = 'flex';
-  if (msgEl) msgEl.innerHTML = msg;
-  if (btn)   btn.style.display = showBtn ? 'flex' : 'none';
+// ── Main (scan tab) ──
+function _showCamOverlay(msg, showBtn=true) {
+  const o=document.getElementById('cam-overlay'); if(!o) return;
+  o.style.display='flex';
+  const m=document.getElementById('cam-msg'); if(m) m.innerHTML=msg;
+  const b=document.getElementById('cam-btn'); if(b) b.style.display=showBtn?'flex':'none';
 }
-function _hideCamOverlay() {
-  const overlay = document.getElementById('cam-overlay');
-  if (overlay) overlay.style.display = 'none';
-}
+function _hideCamOverlay() { const o=document.getElementById('cam-overlay'); if(o) o.style.display='none'; }
 
-async function requestCameraPermission() {
-  const btn = document.getElementById('cam-btn');
-  if (btn) { btn.textContent = 'Abrindo câmera…'; btn.disabled = true; }
-  _startMainScan();
-}
+function requestCameraPermission() { _hideCamOverlay(); _startScan('main-video', _onMainCode); }
 
 async function _startMainScan() {
-  // Check permission state first if API is available
+  if (location.protocol==='file:') {
+    _showCamOverlay('Abra o app via HTTPS (ex: GitHub Pages) para usar a câmera.', false); return;
+  }
   if (navigator.permissions) {
     try {
-      const perm = await navigator.permissions.query({ name: 'camera' });
-      if (perm.state === 'denied') {
-        _showCamOverlay(
-          'Permissão de câmera foi <strong>negada</strong>.<br><br>' +
-          'Para liberar:<br>' +
-          '📱 <strong>Android:</strong> Configurações → Apps → Navegador → Permissões → Câmera<br>' +
-          '🍎 <strong>iPhone:</strong> Ajustes → Safari/Chrome → Câmera → Permitir',
-          false
-        );
+      const p=await navigator.permissions.query({name:'camera'});
+      if (p.state==='denied') {
+        _showCamOverlay('Permissão negada.<br><br>📱 <b>Android:</b> Configurações → Apps → Navegador → Permissões<br>🍎 <b>iPhone:</b> Ajustes → Safari → Câmera → Permitir', false);
         return;
       }
-    } catch(e) { /* permissions API not supported, proceed */ }
+    } catch(e){}
   }
-
-  // Check if running on file:// (camera blocked by browsers)
-  if (location.protocol === 'file:') {
-    _showCamOverlay(
-      'A câmera requer que o app esteja em um servidor.<br><br>' +
-      'Abra o arquivo em um servidor local ou hospede online.<br>' +
-      'Você ainda pode usar o app digitando os códigos manualmente.',
-      false
-    );
-    return;
-  }
-
   _hideCamOverlay();
   _startScan('main-video', _onMainCode);
 }
-
 function _stopMainScan() { _stopStream(); }
 
-let _mainLast = '', _mainLastTime = 0;
+let _mainLast='', _mainLastT=0;
 function _onMainCode(code) {
-  const now = Date.now();
-  if (code === _mainLast && now - _mainLastTime < 2000) return;
-  _mainLast = code; _mainLastTime = now;
-  const product = state.products[code];
+  const now=Date.now();
+  if(code===_mainLast && now-_mainLastT<2000) return;
+  _mainLast=code; _mainLastT=now;
+  const product=S.products[code];
   if (!product) { showRegisterProduct(code); return; }
-  if (state.scanMode === 'sale') handleSaleScan(code, product);
-  else handleReturnScan(code, product);
+  if (S.scanMode==='sale')   handleSaleScan(code,product);
+  else                        handleReturnScan(code,product);
 }
 
-// ── MODAL SCANNER (product form) ──────────────────────────────────────────────
-let _modalScanOn = false;
-
+// ── Modal (product form) ──
+let _modalScanOn=false;
 function toggleModalScan() {
-  if (_modalScanOn) {
-    _modalScanOn = false;
-    _stopModalScan();
-  } else {
-    _modalScanOn = true;
-    const wrap = document.getElementById('modal-scan-wrap');
-    const btn  = document.getElementById('modal-scan-btn');
-    if (wrap) wrap.style.display = 'block';
-    if (btn)  { btn.style.background = 'var(--accent)'; btn.style.borderColor = 'var(--accent)'; btn.textContent = '⏳'; btn.disabled = true; }
-    // Wait for DOM to paint the video element before starting camera
-    setTimeout(() => {
-      if (!_modalScanOn) return;
-      const btn2 = document.getElementById('modal-scan-btn');
-      if (btn2) { btn2.textContent = '📷'; btn2.disabled = false; }
-      _startScan('modal-video', (code) => {
-        _modalScanOn = false;
-        _stopStream();
-        const inp   = document.getElementById('mp-code');
-        const wrap2 = document.getElementById('modal-scan-wrap');
-        const btn3  = document.getElementById('modal-scan-btn');
-        if (inp)   inp.value = code;
-        if (wrap2) wrap2.style.display = 'none';
-        if (btn3)  { btn3.style.background = 'var(--green)'; btn3.style.borderColor = 'var(--green)'; btn3.textContent = '✓'; btn3.disabled = false; }
-        toast('Código lido com sucesso!');
-        setTimeout(() => document.getElementById('mp-name')?.focus(), 150);
-      });
-    }, 350);
-  }
+  if (_modalScanOn) { _modalScanOn=false; _stopModalScan(); return; }
+  _modalScanOn=true;
+  const wrap=document.getElementById('modal-scan-wrap');
+  const btn=document.getElementById('modal-scan-btn');
+  if(wrap) wrap.style.display='block';
+  if(btn) { btn.style.background='var(--accent)'; btn.style.borderColor='var(--accent)'; btn.textContent='⏳'; btn.disabled=true; }
+  setTimeout(() => {
+    if(!_modalScanOn) return;
+    const b=document.getElementById('modal-scan-btn');
+    if(b){ b.textContent='📷'; b.disabled=false; }
+    _startScan('modal-video', (code) => {
+      _modalScanOn=false; _stopStream();
+      const inp=document.getElementById('mp-code');
+      const w=document.getElementById('modal-scan-wrap');
+      const b=document.getElementById('modal-scan-btn');
+      if(inp) inp.value=code;
+      if(w)   w.style.display='none';
+      if(b)   { b.style.background='var(--green)'; b.style.borderColor='var(--green)'; b.textContent='✓'; b.disabled=false; }
+      toast('Código lido!');
+      setTimeout(()=>document.getElementById('mp-name')?.focus(), 150);
+    });
+  }, 350);
 }
-
 function _stopModalScan() {
-  if (_modalScanOn) { _modalScanOn = false; }
-  const wrap = document.getElementById('modal-scan-wrap');
-  const btn  = document.getElementById('modal-scan-btn');
-  if (wrap) wrap.style.display = 'none';
-  if (btn)  { btn.style.background = 'var(--bg3)'; btn.style.borderColor = 'var(--border)'; btn.textContent = '📷'; }
+  if(!_modalScanOn) return;
+  _modalScanOn=false;
+  const w=document.getElementById('modal-scan-wrap');
+  const b=document.getElementById('modal-scan-btn');
+  if(w) w.style.display='none';
+  if(b) { b.style.background='var(--bg3)'; b.style.borderColor='var(--border)'; b.textContent='📷'; b.disabled=false; }
   _stopStream();
 }
 
-// ── TABS ──────────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════════════════════
 function showTab(tab) {
-  state.currentTab = tab;
+  S.tab = tab;
   ['scan','clients','products','orders','settings'].forEach(t =>
     document.getElementById('nav-'+t).classList.toggle('active', t===tab));
   _stopMainScan();
-  document.getElementById('total-slot').innerHTML = '';
-  if      (tab==='scan')     renderScanTab();
-  else if (tab==='clients')  renderClientsTab();
-  else if (tab==='products') renderProductsTab();
-  else if (tab==='orders')   renderOrdersTab();
-  else if (tab==='settings') renderSettingsTab();
+  document.getElementById('total-slot').innerHTML='';
+  if      (tab==='scan')     renderScan();
+  else if (tab==='clients')  renderClients();
+  else if (tab==='products') renderProducts();
+  else if (tab==='orders')   renderOrders();
+  else if (tab==='settings') renderSettings();
 }
 
-// ── SCAN TAB ──────────────────────────────────────────────────────────────────
-function renderScanTab() {
-  const client = state.activeClient ? state.clients[state.activeClient] : null;
-  const order  = state.activeClient ? state.orders[state.activeClient]  : null;
+// ══════════════════════════════════════════════════════════
+// SCAN TAB
+// ══════════════════════════════════════════════════════════
+function renderScan() {
+  const client = S.activeClient ? S.clients[S.activeClient] : null;
+  const order  = S.activeClient ? S.orders[S.activeClient]  : null;
   const items  = order ? Object.values(order.items) : [];
+  const isClosed = order?.closed;
 
+  // Client banner
   const clientBanner = client
-    ? `<div class="client-card" style="margin-bottom:16px;" onclick="showClientPicker()">
-         <div class="client-avatar">${initials(client.name)}</div>
-         <div class="client-info"><div class="client-name">${client.name}</div><div class="client-phone">${client.phone}</div></div>
-         <div style="font-size:20px;color:var(--text2)">›</div>
+    ? `<div class="client-card" onclick="showClientPicker()">
+         <div class="avatar" style="width:44px;height:44px;font-size:16px;">${initials(client.name)}</div>
+         <div style="flex:1;"><div style="font-size:15px;font-weight:600;">${client.name}</div>
+         <div style="font-size:12px;color:var(--text2);">${client.phone}</div></div>
+         <div style="font-size:20px;color:var(--text2);">›</div>
        </div>`
-    : `<button class="btn btn-outline" style="margin-bottom:16px;" onclick="showClientPicker()">👤 Selecionar / Novo Cliente</button>`;
+    : `<button class="btn btn-outline" onclick="showClientPicker()" style="margin-bottom:4px;">👤 Selecionar / Novo Cliente</button>`;
 
+  // Items list
   const itemsHtml = items.length ? `<div class="card">
-    <div class="card-title">Itens no pedido</div>
+    <div class="card-title">Itens no pedido ${isClosed?'<span class="badge badge-green">ENCERRADO</span>':''}</div>
     ${items.map(i=>`<div class="item-row">
       <div class="item-icon">📦</div>
-      <div class="item-info"><div class="item-name">${i.name}</div><div class="item-code">${i.code}</div></div>
-      <div class="qty-ctrl">
+      <div class="item-info"><div class="item-name">${i.name}</div><div class="item-sub">${i.code}</div></div>
+      ${!isClosed ? `<div class="qty-ctrl">
         <button class="qty-btn" onclick="changeQty('${i.code}',-1)">−</button>
         <span class="qty-num">${i.qty}</span>
         <button class="qty-btn" onclick="changeQty('${i.code}',1)">+</button>
-      </div>
+      </div>` : `<span style="font-size:13px;color:var(--text2);">×${i.qty}</span>`}
       <div class="item-price">${fmt(i.price*i.qty)}</div>
     </div>`).join('')}
   </div>` : '';
 
-  document.getElementById('main-content').innerHTML = `
-    ${clientBanner}
-    <div class="mode-bar">
-      <button class="mode-opt ${state.scanMode==='sale'?'active':''}" onclick="setScanMode('sale')">🛒 Venda</button>
-      <button class="mode-opt ${state.scanMode==='return'?'active':''}" onclick="setScanMode('return')">↩ Devolução</button>
-    </div>
-    <div class="scan-box" style="position:relative;">
+  // Action buttons
+  let actionBtns = '';
+  if (client && items.length && !isClosed) {
+    actionBtns = `
+      <button class="btn btn-green" style="margin-bottom:10px;" onclick="showCloseOrderModal()">✅ Fechar pedido e registrar pagamento</button>
+      <button class="btn btn-outline" onclick="setScanMode('return');renderScan()">↩ Modo devolução</button>`;
+  }
+
+  document.getElementById('content').innerHTML = `
+    <div style="margin-bottom:14px;">${clientBanner}</div>
+    ${!isClosed ? `<div class="mode-bar">
+      <button class="mode-opt ${S.scanMode==='sale'?'active':''}" onclick="setScanMode('sale')">🛒 Venda</button>
+      <button class="mode-opt ${S.scanMode==='return'?'active':''}" onclick="setScanMode('return')">↩ Devolução</button>
+    </div>` : ''}
+    <div class="scan-box">
       <video id="main-video" playsinline muted autoplay></video>
-      <div class="scan-overlay">
-        <div class="scan-frame">
-          <span class="sc tl"></span><span class="sc tr"></span>
-          <span class="sc bl"></span><span class="sc br"></span>
-          <div class="scan-line"></div>
-        </div>
-      </div>
-      <div id="cam-overlay" style="display:none;position:absolute;inset:0;background:rgba(15,15,18,0.96);flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;text-align:center;border-radius:var(--radius);">
-        <div style="font-size:48px;">📷</div>
+      <div class="scan-overlay"><div class="scan-frame">
+        <span class="sc tl"></span><span class="sc tr"></span>
+        <span class="sc bl"></span><span class="sc br"></span>
+        <div class="scan-line"></div>
+      </div></div>
+      <div class="cam-overlay" id="cam-overlay" style="display:none;">
+        <div style="font-size:44px;">📷</div>
         <div style="font-size:16px;font-weight:700;">Acesso à câmera</div>
         <div id="cam-msg" style="font-size:13px;color:var(--text2);line-height:1.7;max-width:260px;"></div>
         <button class="btn btn-primary" id="cam-btn" style="width:auto;padding:12px 28px;" onclick="requestCameraPermission()">Permitir câmera</button>
       </div>
     </div>
-    <div class="scan-status" id="scan-status-text">${state.scanMode==='sale'?'Aponte para o código do produto':'Escaneie o item para devolver'}</div>
+    <div style="text-align:center;font-size:13px;color:var(--text2);margin-bottom:14px;">
+      ${isClosed ? '🔒 Pedido encerrado' : S.scanMode==='sale' ? 'Aponte para o código do produto' : '↩ Aponte para o item a devolver'}
+    </div>
     ${itemsHtml}
-    ${client && items.length ? `<button class="btn btn-red" style="margin-top:4px;" onclick="finishOrder()">🏁 Ver resumo do pedido</button>` : ''}
+    ${actionBtns}
     <div style="height:16px;"></div>
   `;
 
@@ -494,296 +508,291 @@ function renderScanTab() {
 
   if (order && items.length) {
     document.getElementById('total-slot').innerHTML =
-      `<div class="total-bar"><span class="total-label">Total do pedido</span><span class="total-value">${fmt(order.total)}</span></div>`;
+      `<div class="total-bar"><span style="font-size:14px;color:var(--text2);">Total</span>
+       <span style="font-size:22px;font-weight:800;color:var(--green);">${fmt(order.total)}</span></div>`;
   }
 
-  // Check permission and start camera
   requestAnimationFrame(() => _startMainScan());
 }
 
-function setScanMode(m) { state.scanMode = m; renderScanTab(); }
+function setScanMode(m) { S.scanMode=m; }
 
 function changeQty(code, delta) {
-  const order = state.orders[state.activeClient];
-  if (!order || !order.items[code]) return;
-  order.items[code].qty   += delta;
-  order.total = (order.total || 0) + delta * order.items[code].price;
-  if (order.items[code].qty <= 0) delete order.items[code];
-  save(); renderScanTab();
+  const order=S.orders[S.activeClient];
+  if (!order||!order.items[code]) return;
+  const item=order.items[code];
+  item.qty += delta;
+  order.total = Math.max(0, (order.total||0) + delta*item.price);
+  if (item.qty<=0) delete order.items[code];
+  save(); renderScan();
 }
 
-// ── SALE / RETURN ─────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+// SALE / RETURN LOGIC
+// ══════════════════════════════════════════════════════════
 function handleSaleScan(code, product) {
-  if (!state.activeClient) { showSelectOrCreateClient(code, product); return; }
-  addToOrder(code, product);
+  const order = S.orders[S.activeClient];
+  if (order?.closed) { toast('Pedido encerrado — alterne para devolução ou selecione outro cliente', 'err'); return; }
+  if (!S.activeClient) { showSelectOrCreateClient(code,product); return; }
+  addToOrder(code,product);
 }
+
 function handleReturnScan(code, product) {
-  if (!state.activeClient) { toast('Selecione um cliente para devolução', 'error'); return; }
-  const order = state.orders[state.activeClient];
-  if (!order || !order.items[code] || order.items[code].qty <= 0) {
-    toast('Item não está no pedido deste cliente', 'error'); return;
+  if (!S.activeClient) { toast('Selecione um cliente', 'err'); return; }
+  const order=S.orders[S.activeClient];
+  if (!order||!order.items[code]||order.items[code].qty<=0) {
+    toast('Item não está no pedido deste cliente', 'err'); return;
   }
   order.items[code].qty--;
-  order.total -= product.price;
-  if (order.items[code].qty === 0) delete order.items[code];
-  save(); toast(`↩ Devolvido: ${product.name}`); renderScanTab();
-}
-function addToOrder(code, product) {
-  if (!state.orders[state.activeClient])
-    state.orders[state.activeClient] = { clientId: state.activeClient, items: {}, total: 0 };
-  const order = state.orders[state.activeClient];
-  if (order.items[code]) order.items[code].qty++;
-  else order.items[code] = { code, name: product.name, price: product.price, qty: 1 };
-  order.total = (order.total || 0) + product.price;
-  save(); toast(`✓ ${product.name} adicionado`); renderScanTab();
+  order.total = Math.max(0, (order.total||0) - product.price);
+  if (order.items[code].qty===0) delete order.items[code];
+  save();
+  toast(`↩ Devolvido: ${product.name}`);
+  renderScan();
 }
 
-// ── ORDER SUMMARY ─────────────────────────────────────────────────────────────
-function finishOrder() {
-  const client = state.clients[state.activeClient];
-  const order  = state.orders[state.activeClient];
+function addToOrder(code, product) {
+  if (!S.orders[S.activeClient])
+    S.orders[S.activeClient] = { clientId:S.activeClient, items:{}, total:0, closed:false };
+  const order=S.orders[S.activeClient];
+  if (order.items[code]) order.items[code].qty++;
+  else order.items[code]={ code, name:product.name, price:product.price, qty:1 };
+  order.total = (order.total||0) + product.price;
+  save(); toast(`✓ ${product.name}`); renderScan();
+}
+
+// ══════════════════════════════════════════════════════════
+// CLOSE ORDER
+// ══════════════════════════════════════════════════════════
+function showCloseOrderModal() {
+  const client=S.clients[S.activeClient];
+  const order=S.orders[S.activeClient];
   if (!order) return;
-  const items = Object.values(order.items);
+  const items=Object.values(order.items);
   showModal(`
     <div class="modal-handle"></div>
-    <div class="modal-title">📋 Resumo do pedido</div>
+    <div class="modal-title">✅ Fechar pedido</div>
     <div class="modal-sub">${client.name} · ${client.phone}</div>
     <div class="card" style="margin-bottom:16px;">
       ${items.map(i=>`<div class="item-row">
-        <div class="item-info"><div class="item-name">${i.name}</div><div class="item-code">Qtd: ${i.qty}</div></div>
+        <div class="item-info"><div class="item-name">${i.name}</div><div class="item-sub">Qtd: ${i.qty}</div></div>
         <div class="item-price">${fmt(i.price*i.qty)}</div>
       </div>`).join('')}
       <div class="divider"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;">
-        <span style="font-weight:600;">Total</span>
-        <span style="font-size:22px;font-weight:800;color:var(--green);">${fmt(order.total)}</span>
+        <span style="font-weight:600;">Total a receber</span>
+        <span style="font-size:26px;font-weight:800;color:var(--green);">${fmt(order.total)}</span>
       </div>
     </div>
-    <button class="btn btn-green" style="margin-bottom:10px;" onclick="confirmCloseOrder('${state.activeClient}')">✅ Fechar pedido e registrar pagamento</button>
-    <button class="btn btn-outline" onclick="closeModal()">Voltar</button>
-  `);
-}
-
-function confirmCloseOrder(clientId) {
-  const client = state.clients[clientId];
-  const order  = state.orders[clientId];
-  if (!order) return;
-  showModal(`
-    <div class="modal-handle"></div>
-    <div class="modal-title">Confirmar pagamento</div>
-    <div class="modal-sub">Isso vai <strong>encerrar</strong> o pedido de <strong>${client.name}</strong> e registrar como pago. Após fechar não será possível adicionar ou remover itens.</div>
-    <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:16px;margin-bottom:20px;text-align:center;">
-      <div style="font-size:13px;color:var(--text2);margin-bottom:4px;">Valor recebido</div>
-      <div style="font-size:32px;font-weight:800;color:var(--green);">${fmt(order.total)}</div>
+    <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:var(--radius-sm);padding:12px;font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6;">
+      ⚠️ Após fechar, <strong>não será possível</strong> adicionar ou remover itens. O pedido será registrado como pago.
     </div>
-    <button class="btn btn-green" style="margin-bottom:10px;" onclick="closeOrderConfirmed('${clientId}')">✅ Confirmar e encerrar pedido</button>
+    <button class="btn btn-green" style="margin-bottom:10px;" onclick="confirmCloseOrder('${S.activeClient}')">✅ Confirmar pagamento e encerrar</button>
     <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
   `);
 }
 
-function closeOrderConfirmed(clientId) {
-  const client = state.clients[clientId];
-  const order  = state.orders[clientId];
+function confirmCloseOrder(clientId) {
+  const client=S.clients[clientId];
+  const order=S.orders[clientId];
   if (!order) return;
-
-  // Save to closed orders history
-  const closed = {
-    clientId,
-    clientName:  client.name,
-    clientPhone: client.phone,
-    items:       { ...order.items },
-    total:       order.total,
-    closedAt:    new Date().toISOString()
+  // Move to closed history
+  const record = {
+    clientId, clientName:client.name, clientPhone:client.phone,
+    items:{...order.items}, total:order.total,
+    closedAt:new Date().toISOString()
   };
-  state.closed.unshift(closed); // most recent first
-
-  // Remove active order
-  delete state.orders[clientId];
-  if (state.activeClient === clientId) state.activeClient = null;
-
-  save();
-  closeModal();
-  toast(`✅ Pedido de ${client.name} encerrado!`);
-  renderOrdersTab();
+  S.closed.unshift(record);
+  delete S.orders[clientId];
+  if (S.activeClient===clientId) S.activeClient=null;
+  save(); closeModal();
+  toast(`✅ Pedido de ${client.name} encerrado e registrado!`);
+  renderOrders();
+  showTab('orders');
 }
+
+// ══════════════════════════════════════════════════════════
+// CLIENT PICKER
+// ══════════════════════════════════════════════════════════
 function showClientPicker() {
-  const clients = Object.values(state.clients);
+  const clients=Object.values(S.clients);
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title">Selecionar cliente</div>
     <button class="btn btn-primary" style="margin-bottom:16px;" onclick="closeModal();showNewClientForm()">+ Novo Cliente</button>
     ${clients.length ? clients.map(c=>{
-      const o = state.orders[c.id];
+      const o=S.orders[c.id];
       return `<div class="client-card" onclick="selectClient('${c.id}')">
-        <div class="client-avatar">${initials(c.name)}</div>
-        <div class="client-info"><div class="client-name">${c.name}</div><div class="client-phone">${c.phone}</div>
-        ${o && o.total > 0 ? `<div class="client-total">${fmt(o.total)}</div>` : ''}</div>
-        <div style="font-size:20px;color:var(--text2)">›</div>
+        <div class="avatar" style="width:44px;height:44px;font-size:16px;">${initials(c.name)}</div>
+        <div style="flex:1;"><div style="font-size:15px;font-weight:600;">${c.name}</div>
+        <div style="font-size:12px;color:var(--text2);">${c.phone}</div>
+        ${o&&Object.keys(o.items).length?`<div style="font-size:12px;color:var(--green);margin-top:2px;">${fmt(o.total)} em aberto</div>`:''}</div>
+        <div style="font-size:20px;color:var(--text2);">›</div>
       </div>`;
     }).join('') : `<div class="empty" style="padding:24px;"><p>Nenhum cliente cadastrado</p></div>`}
   `);
 }
-function selectClient(id) { state.activeClient = id; closeModal(); renderScanTab(); }
+function selectClient(id) { S.activeClient=id; S.scanMode='sale'; closeModal(); renderScan(); }
 
 function showSelectOrCreateClient(code, product) {
-  const clients = Object.values(state.clients);
+  const clients=Object.values(S.clients);
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title">Produto detectado!</div>
-    <div class="modal-sub">📦 ${product.name} · ${fmt(product.price)}</div>
-    <div class="card" style="margin-bottom:16px;">
-      <div class="card-title">Para qual cliente?</div>
-      ${clients.map(c=>`<div class="client-card" onclick="selectClientAndAdd('${c.id}','${code}')">
-        <div class="client-avatar">${initials(c.name)}</div>
-        <div class="client-info"><div class="client-name">${c.name}</div><div class="client-phone">${c.phone}</div></div>
-      </div>`).join('')}
-      <button class="btn btn-primary" style="margin-top:${clients.length?'12px':'0'};" onclick="closeModal();showNewClientFormThen('${code}')">+ Novo Cliente</button>
-    </div>
+    <div class="modal-sub">📦 ${product.name} · ${fmt(product.price)}<br>Para qual cliente?</div>
+    ${clients.map(c=>`<div class="client-card" onclick="selectClientAndAdd('${c.id}','${code}')">
+      <div class="avatar" style="width:44px;height:44px;font-size:16px;">${initials(c.name)}</div>
+      <div><div style="font-size:15px;font-weight:600;">${c.name}</div><div style="font-size:12px;color:var(--text2);">${c.phone}</div></div>
+    </div>`).join('')}
+    <button class="btn btn-primary" style="margin-top:${clients.length?'8px':'0'};" onclick="closeModal();showNewClientFormThen('${code}')">+ Novo Cliente</button>
   `);
 }
-function selectClientAndAdd(clientId, code) {
-  state.activeClient = clientId; closeModal(); addToOrder(code, state.products[code]);
-}
+function selectClientAndAdd(clientId,code) { S.activeClient=clientId; closeModal(); addToOrder(code,S.products[code]); }
 
-// ── CLIENT FORMS ──────────────────────────────────────────────────────────────
-function showNewClientForm(redirectTab) {
+// ══════════════════════════════════════════════════════════
+// CLIENT FORMS
+// ══════════════════════════════════════════════════════════
+function showNewClientForm(redirect) {
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title">Novo Cliente</div>
     <div class="form-group"><label class="form-label">Nome completo *</label><input class="form-input" id="nc-name" placeholder="Ex: Maria Silva"/></div>
-    <div class="form-group"><label class="form-label">Telefone (código do cliente) *</label><input class="form-input" id="nc-phone" type="tel" placeholder="Ex: 41999990000"/></div>
+    <div class="form-group"><label class="form-label">Telefone *</label><input class="form-input" id="nc-phone" type="tel" placeholder="Ex: 41999990000"/></div>
     <div class="row">
       <div class="form-group"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button></div>
-      <div class="form-group"><button class="btn btn-primary" onclick="saveNewClient('${redirectTab||''}')">Salvar</button></div>
+      <div class="form-group"><button class="btn btn-primary" onclick="saveNewClient('${redirect||''}')">Salvar</button></div>
     </div>
   `);
-  setTimeout(() => document.getElementById('nc-name')?.focus(), 100);
+  setTimeout(()=>document.getElementById('nc-name')?.focus(),100);
 }
 function showNewClientFormThen(code) {
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title">Novo Cliente</div>
     <div class="form-group"><label class="form-label">Nome completo *</label><input class="form-input" id="nc-name" placeholder="Ex: Maria Silva"/></div>
-    <div class="form-group"><label class="form-label">Telefone (código do cliente) *</label><input class="form-input" id="nc-phone" type="tel" placeholder="Ex: 41999990000"/></div>
+    <div class="form-group"><label class="form-label">Telefone *</label><input class="form-input" id="nc-phone" type="tel" placeholder="Ex: 41999990000"/></div>
     <div class="row">
       <div class="form-group"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button></div>
       <div class="form-group"><button class="btn btn-primary" onclick="saveNewClientAndAdd('${code}')">Salvar e Adicionar</button></div>
     </div>
   `);
-  setTimeout(() => document.getElementById('nc-name')?.focus(), 100);
+  setTimeout(()=>document.getElementById('nc-name')?.focus(),100);
 }
-function saveNewClient(redirectTab) {
-  const name  = document.getElementById('nc-name').value.trim();
-  const phone = document.getElementById('nc-phone').value.trim();
-  if (!name || !phone) { toast('Preencha nome e telefone', 'error'); return; }
-  const id = phone.replace(/\D/g,'');
-  state.clients[id] = { id, name, phone };
+function saveNewClient(redirect) {
+  const name=document.getElementById('nc-name').value.trim();
+  const phone=document.getElementById('nc-phone').value.trim();
+  if(!name||!phone){ toast('Preencha nome e telefone','err'); return; }
+  const id=phone.replace(/\D/g,'');
+  S.clients[id]={id,name,phone};
   save(); closeModal(); toast(`Cliente ${name} cadastrado!`);
-  if (redirectTab) showTab(redirectTab); else renderScanTab();
+  if(redirect) showTab(redirect); else renderScan();
 }
 function saveNewClientAndAdd(code) {
-  const name  = document.getElementById('nc-name').value.trim();
-  const phone = document.getElementById('nc-phone').value.trim();
-  if (!name || !phone) { toast('Preencha nome e telefone', 'error'); return; }
-  const id = phone.replace(/\D/g,'');
-  state.clients[id] = { id, name, phone };
-  state.activeClient = id;
-  save(); closeModal(); addToOrder(code, state.products[code]);
+  const name=document.getElementById('nc-name').value.trim();
+  const phone=document.getElementById('nc-phone').value.trim();
+  if(!name||!phone){ toast('Preencha nome e telefone','err'); return; }
+  const id=phone.replace(/\D/g,'');
+  S.clients[id]={id,name,phone}; S.activeClient=id;
+  save(); closeModal(); addToOrder(code,S.products[code]);
 }
 
-// ── REGISTER PRODUCT (via scan) ───────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+// REGISTER PRODUCT (via scan)
+// ══════════════════════════════════════════════════════════
 function showRegisterProduct(code) {
   showModal(`
     <div class="modal-handle"></div>
-    <div class="modal-title">Produto não cadastrado</div>
-    <div style="font-family:monospace;font-size:13px;background:var(--bg3);padding:8px 12px;border-radius:8px;margin-bottom:16px;">📷 ${code}</div>
-    <div class="form-group"><label class="form-label">Descrição do produto *</label><input class="form-input" id="rp-name" placeholder="Ex: Camisa Social Azul M"/></div>
+    <div class="modal-title">Produto novo</div>
+    <div style="font-family:monospace;font-size:12px;background:var(--bg3);padding:8px 12px;border-radius:8px;margin-bottom:16px;color:var(--text2);">📷 ${code}</div>
+    <div class="form-group"><label class="form-label">Descrição *</label><input class="form-input" id="rp-name" placeholder="Ex: Camisa Social Azul M"/></div>
     <div class="form-group"><label class="form-label">Valor (R$) *</label><input class="form-input" id="rp-price" type="number" step="0.01" placeholder="0,00" inputmode="decimal"/></div>
     <div class="row">
       <div class="form-group"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button></div>
       <div class="form-group"><button class="btn btn-primary" onclick="saveProduct('${code}')">Cadastrar</button></div>
     </div>
   `);
-  setTimeout(() => document.getElementById('rp-name')?.focus(), 100);
+  setTimeout(()=>document.getElementById('rp-name')?.focus(),100);
 }
 function saveProduct(code) {
-  const name  = document.getElementById('rp-name').value.trim();
-  const price = parseFloat(document.getElementById('rp-price').value);
-  if (!name || isNaN(price) || price <= 0) { toast('Preencha todos os campos', 'error'); return; }
-  state.products[code] = { code, name, price };
+  const name=document.getElementById('rp-name').value.trim();
+  const price=parseFloat(document.getElementById('rp-price').value);
+  if(!name||isNaN(price)||price<=0){ toast('Preencha todos os campos','err'); return; }
+  S.products[code]={code,name,price};
   save(); closeModal(); toast('✓ Produto cadastrado!');
 }
 
-// ── CLIENTS TAB ───────────────────────────────────────────────────────────────
-function renderClientsTab() {
-  const clients = Object.values(state.clients);
-  document.getElementById('main-content').innerHTML = `
+// ══════════════════════════════════════════════════════════
+// CLIENTS TAB
+// ══════════════════════════════════════════════════════════
+function renderClients() {
+  const clients=Object.values(S.clients);
+  document.getElementById('content').innerHTML=`
     <button class="btn btn-primary" style="margin-bottom:16px;" onclick="showNewClientForm('clients')">+ Novo Cliente</button>
     ${clients.length ? clients.map(c=>{
-      const o = state.orders[c.id];
-      const total = o?.total || 0;
-      const count = o ? Object.values(o.items).reduce((s,i)=>s+i.qty,0) : 0;
+      const o=S.orders[c.id];
+      const total=o?.total||0;
+      const count=o?Object.values(o.items).reduce((s,i)=>s+i.qty,0):0;
       return `<div class="client-card" onclick="showClientDetail('${c.id}')">
-        <div class="client-avatar">${initials(c.name)}</div>
-        <div class="client-info"><div class="client-name">${c.name}</div><div class="client-phone">${c.phone}</div>
-        ${count > 0 ? `<div class="client-total">${count} item(s) · ${fmt(total)}</div>` : '<div style="font-size:12px;color:var(--text3)">Sem pedido aberto</div>'}</div>
-        <div style="font-size:20px;color:var(--text2)">›</div>
+        <div class="avatar" style="width:44px;height:44px;font-size:16px;">${initials(c.name)}</div>
+        <div style="flex:1;"><div style="font-size:15px;font-weight:600;">${c.name}</div>
+        <div style="font-size:12px;color:var(--text2);">${c.phone}</div>
+        ${count>0?`<div style="font-size:12px;color:var(--green);margin-top:2px;">${count} item(s) · ${fmt(total)}</div>`:'<div style="font-size:11px;color:var(--text3);margin-top:2px;">Sem pedido aberto</div>'}</div>
+        <div style="font-size:20px;color:var(--text2);">›</div>
       </div>`;
-    }).join('') : `<div class="empty"><div class="icon">👥</div><p>Nenhum cliente cadastrado</p></div>`}
+    }).join('') : `<div class="empty"><div class="icon">👥</div><p>Nenhum cliente</p></div>`}
     <div style="height:12px;"></div>
   `;
 }
 function showClientDetail(id) {
-  const client = state.clients[id];
-  const order  = state.orders[id];
-  const items  = order ? Object.values(order.items) : [];
+  const client=S.clients[id];
+  const order=S.orders[id];
+  const items=order?Object.values(order.items):[];
   showModal(`
     <div class="modal-handle"></div>
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
-      <div class="client-avatar" style="width:52px;height:52px;font-size:20px;">${initials(client.name)}</div>
-      <div><div class="modal-title" style="margin-bottom:4px;">${client.name}</div><div style="font-size:14px;color:var(--text2);">📱 ${client.phone}</div></div>
+      <div class="avatar" style="width:52px;height:52px;font-size:20px;">${initials(client.name)}</div>
+      <div><div class="modal-title" style="margin-bottom:2px;">${client.name}</div>
+      <div style="font-size:14px;color:var(--text2);">📱 ${client.phone}</div></div>
     </div>
-    ${items.length ? `<div class="card" style="margin-bottom:16px;">
+    ${items.length?`<div class="card" style="margin-bottom:16px;">
       <div class="card-title">Pedido em aberto</div>
       ${items.map(i=>`<div class="item-row">
-        <div class="item-info"><div class="item-name">${i.name}</div><div class="item-code">Qtd: ${i.qty}</div></div>
+        <div class="item-info"><div class="item-name">${i.name}</div><div class="item-sub">Qtd: ${i.qty}</div></div>
         <div class="item-price">${fmt(i.price*i.qty)}</div>
       </div>`).join('')}
       <div class="divider"></div>
-      <div style="display:flex;justify-content:space-between;">
-        <span style="font-weight:600;">Total</span>
-        <span style="color:var(--green);font-weight:700;">${fmt(order.total)}</span>
-      </div>
-    </div>` : `<div class="empty" style="padding:24px;"><p>Sem itens em aberto</p></div>`}
-    <div class="row">
-      <div class="form-group"><button class="btn btn-outline" onclick="state.activeClient='${id}';closeModal();showTab('scan')">🛒 Escanear</button></div>
-      <div class="form-group"><button class="btn btn-red" onclick="deleteClient('${id}')">🗑 Excluir</button></div>
-    </div>
+      <div style="display:flex;justify-content:space-between;"><span style="font-weight:600;">Total</span><span style="color:var(--green);font-weight:700;">${fmt(order.total)}</span></div>
+    </div>`:`<div class="empty" style="padding:24px;"><p>Sem pedido aberto</p></div>`}
+    <button class="btn btn-primary" style="margin-bottom:10px;" onclick="S.activeClient='${id}';S.scanMode='sale';closeModal();showTab('scan')">🛒 Escanear / Adicionar itens</button>
+    ${items.length?`<button class="btn btn-amber" style="margin-bottom:10px;" onclick="S.activeClient='${id}';S.scanMode='return';closeModal();showTab('scan')">↩ Registrar devolução</button>
+    <button class="btn btn-green" style="margin-bottom:10px;" onclick="S.activeClient='${id}';closeModal();showCloseOrderModal()">✅ Fechar pedido / Registrar pagamento</button>`:''}
+    <button class="btn btn-red btn-sm" style="width:auto;margin:0 auto;" onclick="deleteClient('${id}')">🗑 Excluir cliente</button>
   `);
 }
 function deleteClient(id) {
-  if (!confirm('Excluir este cliente e seu pedido?')) return;
-  delete state.clients[id]; delete state.orders[id];
-  if (state.activeClient === id) state.activeClient = null;
-  save(); closeModal(); renderClientsTab(); toast('Cliente excluído');
+  if(!confirm('Excluir este cliente e seu pedido?')) return;
+  delete S.clients[id]; delete S.orders[id];
+  if(S.activeClient===id) S.activeClient=null;
+  save(); closeModal(); renderClients(); toast('Cliente excluído');
 }
 
-// ── PRODUCTS TAB ──────────────────────────────────────────────────────────────
-function renderProductsTab() {
-  const products = Object.values(state.products);
-  document.getElementById('main-content').innerHTML = `
+// ══════════════════════════════════════════════════════════
+// PRODUCTS TAB
+// ══════════════════════════════════════════════════════════
+function renderProducts() {
+  const products=Object.values(S.products);
+  document.getElementById('content').innerHTML=`
     <button class="btn btn-primary" style="margin-bottom:16px;" onclick="showAddProductForm()">+ Cadastrar Produto</button>
     ${products.length ? products.map(p=>`
       <div class="item-row" style="padding:12px;background:var(--surface);border-radius:var(--radius-sm);border:1px solid var(--border);margin-bottom:8px;">
         <div class="item-icon">📦</div>
-        <div class="item-info"><div class="item-name">${p.name}</div><div class="item-code">${p.code}</div></div>
+        <div class="item-info"><div class="item-name">${p.name}</div><div class="item-sub">${p.code}</div></div>
         <div class="item-price">${fmt(p.price)}</div>
         <button class="btn btn-sm btn-outline" onclick="editProduct('${p.code}')" style="margin-left:8px;">✏</button>
-      </div>`).join('') : `<div class="empty"><div class="icon">📦</div><p>Nenhum produto cadastrado</p></div>`}
+      </div>`).join('') : `<div class="empty"><div class="icon">📦</div><p>Nenhum produto</p></div>`}
     <div style="height:12px;"></div>
   `;
 }
-
 function showAddProductForm() {
   showModal(`
     <div class="modal-handle"></div>
@@ -792,22 +801,20 @@ function showAddProductForm() {
       <label class="form-label">Código de barras / QR Code *</label>
       <div style="display:flex;gap:8px;align-items:center;">
         <input class="form-input" id="mp-code" placeholder="Ex: 7891234567890" style="flex:1;"/>
-        <button class="scan-icon-btn" id="modal-scan-btn" onclick="toggleModalScan()" title="Escanear código">📷</button>
+        <button class="scan-icon-btn" id="modal-scan-btn" onclick="toggleModalScan()" title="Escanear">📷</button>
       </div>
     </div>
     <div id="modal-scan-wrap" style="display:none;margin-bottom:14px;">
       <div class="scan-box" style="max-height:220px;">
         <video id="modal-video" playsinline muted autoplay></video>
-        <div class="scan-overlay">
-          <div class="scan-frame">
-            <span class="sc tl"></span><span class="sc tr"></span>
-            <span class="sc bl"></span><span class="sc br"></span>
-          </div>
-        </div>
+        <div class="scan-overlay"><div class="scan-frame">
+          <span class="sc tl"></span><span class="sc tr"></span>
+          <span class="sc bl"></span><span class="sc br"></span>
+        </div></div>
       </div>
-      <div style="text-align:center;font-size:13px;color:var(--text2);margin-top:8px;">Aponte para o código do produto</div>
+      <div style="text-align:center;font-size:13px;color:var(--text2);margin-top:8px;">Aponte para o código</div>
     </div>
-    <div class="form-group"><label class="form-label">Descrição do produto *</label><input class="form-input" id="mp-name" placeholder="Ex: Camisa Polo Azul M"/></div>
+    <div class="form-group"><label class="form-label">Descrição *</label><input class="form-input" id="mp-name" placeholder="Ex: Camisa Polo Azul M"/></div>
     <div class="form-group"><label class="form-label">Valor (R$) *</label><input class="form-input" id="mp-price" type="number" step="0.01" placeholder="0,00" inputmode="decimal"/></div>
     <div class="row">
       <div class="form-group"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button></div>
@@ -815,22 +822,20 @@ function showAddProductForm() {
     </div>
   `);
 }
-
 function saveManualProduct() {
-  const code  = document.getElementById('mp-code').value.trim();
-  const name  = document.getElementById('mp-name').value.trim();
-  const price = parseFloat(document.getElementById('mp-price').value);
-  if (!code || !name || isNaN(price) || price <= 0) { toast('Preencha todos os campos', 'error'); return; }
-  state.products[code] = { code, name, price };
-  save(); closeModal(); renderProductsTab(); toast('Produto cadastrado!');
+  const code=document.getElementById('mp-code').value.trim();
+  const name=document.getElementById('mp-name').value.trim();
+  const price=parseFloat(document.getElementById('mp-price').value);
+  if(!code||!name||isNaN(price)||price<=0){ toast('Preencha todos os campos','err'); return; }
+  S.products[code]={code,name,price};
+  save(); closeModal(); renderProducts(); toast('Produto cadastrado!');
 }
-
 function editProduct(code) {
-  const p = state.products[code];
+  const p=S.products[code];
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title">Editar Produto</div>
-    <div style="font-family:monospace;font-size:13px;background:var(--bg3);padding:8px 12px;border-radius:8px;margin-bottom:16px;">${code}</div>
+    <div style="font-family:monospace;font-size:12px;background:var(--bg3);padding:8px 12px;border-radius:8px;margin-bottom:16px;">${code}</div>
     <div class="form-group"><label class="form-label">Descrição *</label><input class="form-input" id="ep-name" value="${p.name}"/></div>
     <div class="form-group"><label class="form-label">Valor (R$) *</label><input class="form-input" id="ep-price" type="number" step="0.01" value="${p.price}" inputmode="decimal"/></div>
     <div class="row">
@@ -840,73 +845,66 @@ function editProduct(code) {
   `);
 }
 function updateProduct(code) {
-  const name  = document.getElementById('ep-name').value.trim();
-  const price = parseFloat(document.getElementById('ep-price').value);
-  if (!name || isNaN(price) || price <= 0) { toast('Preencha todos os campos', 'error'); return; }
-  state.products[code] = { code, name, price };
-  save(); closeModal(); renderProductsTab(); toast('Produto atualizado!');
+  const name=document.getElementById('ep-name').value.trim();
+  const price=parseFloat(document.getElementById('ep-price').value);
+  if(!name||isNaN(price)||price<=0){ toast('Preencha todos os campos','err'); return; }
+  S.products[code]={code,name,price};
+  save(); closeModal(); renderProducts(); toast('Produto atualizado!');
 }
 function deleteProduct(code) {
-  delete state.products[code];
-  save(); closeModal(); renderProductsTab(); toast('Produto excluído');
+  delete S.products[code];
+  save(); closeModal(); renderProducts(); toast('Produto excluído');
 }
 
-// ── ORDERS TAB ────────────────────────────────────────────────────────────────
-function renderOrdersTab() {
-  const openOrders   = Object.values(state.orders).filter(o => Object.keys(o.items).length > 0);
-  const closedOrders = state.closed || [];
+// ══════════════════════════════════════════════════════════
+// ORDERS TAB
+// ══════════════════════════════════════════════════════════
+function renderOrders() {
+  const open   = Object.values(S.orders).filter(o=>Object.keys(o.items||{}).length>0);
+  const closed = S.closed||[];
 
-  const openHtml = openOrders.length ? openOrders.map(o=>{
-    const client = state.clients[o.clientId];
-    if (!client) return '';
-    const count = Object.values(o.items).reduce((s,i)=>s+i.qty,0);
+  const openHtml = open.length ? open.map(o=>{
+    const c=S.clients[o.clientId]; if(!c) return '';
+    const count=Object.values(o.items).reduce((s,i)=>s+i.qty,0);
     return `<div class="card" style="cursor:pointer;" onclick="showOrderDetail('${o.clientId}')">
       <div style="display:flex;align-items:center;gap:12px;">
-        <div class="client-avatar" style="width:44px;height:44px;">${initials(client.name)}</div>
-        <div style="flex:1;">
-          <div style="font-size:15px;font-weight:600;">${client.name}</div>
-          <div style="font-size:13px;color:var(--text2);">${count} item(s) · ${client.phone}</div>
-        </div>
+        <div class="avatar" style="width:44px;height:44px;font-size:16px;">${initials(c.name)}</div>
+        <div style="flex:1;"><div style="font-size:15px;font-weight:600;">${c.name}</div>
+        <div style="font-size:12px;color:var(--text2);">${count} item(s) · ${c.phone}</div></div>
         <div style="text-align:right;">
-          <div style="font-size:18px;font-weight:800;color:var(--green);">${fmt(o.total)}</div>
-          <div style="font-size:11px;color:var(--amber);font-weight:600;">EM ABERTO</div>
+          <div style="font-size:17px;font-weight:800;color:var(--green);">${fmt(o.total)}</div>
+          <span class="badge badge-amber">EM ABERTO</span>
         </div>
       </div>
     </div>`;
   }).join('') : `<div class="empty" style="padding:28px;"><p>Nenhum pedido em aberto</p></div>`;
 
-  const closedHtml = closedOrders.length ? closedOrders.map((o,idx)=>{
-    const date = new Date(o.closedAt).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
-    return `<div class="card" style="cursor:pointer;opacity:.85;" onclick="showClosedOrderDetail(${idx})">
+  const closedHtml = closed.map((o,i)=>`
+    <div class="card" style="cursor:pointer;opacity:.85;" onclick="showClosedDetail(${i})">
       <div style="display:flex;align-items:center;gap:12px;">
-        <div class="client-avatar" style="width:44px;height:44px;background:var(--bg3);color:var(--text2);">${initials(o.clientName)}</div>
-        <div style="flex:1;">
-          <div style="font-size:15px;font-weight:600;">${o.clientName}</div>
-          <div style="font-size:12px;color:var(--text2);">${date}</div>
-        </div>
+        <div class="avatar" style="width:44px;height:44px;font-size:16px;background:var(--bg3);color:var(--text2);">${initials(o.clientName)}</div>
+        <div style="flex:1;"><div style="font-size:15px;font-weight:600;">${o.clientName}</div>
+        <div style="font-size:12px;color:var(--text2);">${fmtDate(o.closedAt)}</div></div>
         <div style="text-align:right;">
-          <div style="font-size:18px;font-weight:800;color:var(--green);">${fmt(o.total)}</div>
-          <div style="font-size:11px;color:var(--green);font-weight:600;">PAGO ✅</div>
+          <div style="font-size:17px;font-weight:800;color:var(--green);">${fmt(o.total)}</div>
+          <span class="badge badge-green">PAGO ✅</span>
         </div>
       </div>
-    </div>`;
-  }).join('') : '';
+    </div>`).join('');
 
-  document.getElementById('main-content').innerHTML = `
-    <div style="font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">Em aberto</div>
+  document.getElementById('content').innerHTML=`
+    <div class="section-label">Em aberto</div>
     ${openHtml}
-    ${closedOrders.length ? `
-    <div style="font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin:16px 0 10px;">Histórico de pagamentos</div>
-    ${closedHtml}` : ''}
+    ${closed.length?`<div class="section-label" style="margin-top:16px;">Histórico de pagamentos</div>${closedHtml}`:''}
     <div style="height:12px;"></div>
   `;
 }
 
 function showOrderDetail(clientId) {
-  const client = state.clients[clientId];
-  const order  = state.orders[clientId];
-  if (!order) return;
-  const items = Object.values(order.items);
+  const client=S.clients[clientId];
+  const order=S.orders[clientId];
+  if(!order) return;
+  const items=Object.values(order.items);
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title">${client.name}</div>
@@ -914,7 +912,7 @@ function showOrderDetail(clientId) {
     <div class="card" style="margin-bottom:16px;">
       ${items.map(i=>`<div class="item-row">
         <div class="item-icon">📦</div>
-        <div class="item-info"><div class="item-name">${i.name}</div><div class="item-code">${i.code} · Qtd: ${i.qty}</div></div>
+        <div class="item-info"><div class="item-name">${i.name}</div><div class="item-sub">${i.code} · Qtd: ${i.qty}</div></div>
         <div class="item-price">${fmt(i.price*i.qty)}</div>
       </div>`).join('')}
       <div class="divider"></div>
@@ -923,161 +921,206 @@ function showOrderDetail(clientId) {
         <span style="color:var(--green);font-size:20px;font-weight:800;">${fmt(order.total)}</span>
       </div>
     </div>
-    <button class="btn btn-green" style="margin-bottom:10px;" onclick="closeModal();state.activeClient='${clientId}';confirmCloseOrder('${clientId}')">✅ Fechar pedido e registrar pagamento</button>
-    <button class="btn btn-primary" style="margin-bottom:10px;" onclick="state.activeClient='${clientId}';closeModal();showTab('scan')">↩ Registrar Devolução</button>
+    <button class="btn btn-green" style="margin-bottom:10px;" onclick="S.activeClient='${clientId}';closeModal();showCloseOrderModal()">✅ Fechar pedido e registrar pagamento</button>
+    <button class="btn btn-amber" style="margin-bottom:10px;" onclick="S.activeClient='${clientId}';S.scanMode='return';closeModal();showTab('scan')">↩ Registrar devolução</button>
+    <button class="btn btn-primary" style="margin-bottom:10px;" onclick="S.activeClient='${clientId}';S.scanMode='sale';closeModal();showTab('scan')">🛒 Adicionar itens</button>
     <button class="btn btn-outline" onclick="closeModal()">Fechar</button>
   `);
 }
 
-function showClosedOrderDetail(idx) {
-  const o = state.closed[idx];
-  if (!o) return;
-  const items = Object.values(o.items);
-  const date  = new Date(o.closedAt).toLocaleString('pt-BR');
+function showClosedDetail(idx) {
+  const o=S.closed[idx]; if(!o) return;
+  const items=Object.values(o.items);
   showModal(`
     <div class="modal-handle"></div>
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-      <div style="font-size:24px;">✅</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+      <div style="font-size:28px;">✅</div>
       <div><div class="modal-title" style="margin-bottom:2px;">${o.clientName}</div>
-      <div style="font-size:13px;color:var(--text2);">📱 ${o.clientPhone} · Pago em ${date}</div></div>
+      <div style="font-size:13px;color:var(--text2);">📱 ${o.clientPhone}<br>Pago em ${fmtDate(o.closedAt)}</div></div>
     </div>
     <div class="card" style="margin-bottom:16px;">
       ${items.map(i=>`<div class="item-row">
-        <div class="item-info"><div class="item-name">${i.name}</div><div class="item-code">Qtd: ${i.qty}</div></div>
+        <div class="item-info"><div class="item-name">${i.name}</div><div class="item-sub">Qtd: ${i.qty}</div></div>
         <div class="item-price">${fmt(i.price*i.qty)}</div>
       </div>`).join('')}
       <div class="divider"></div>
-      <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div style="display:flex;justify-content:space-between;">
         <span style="font-weight:600;">Total pago</span>
         <span style="color:var(--green);font-size:20px;font-weight:800;">${fmt(o.total)}</span>
       </div>
     </div>
-    <button class="btn btn-red btn-sm" style="width:auto;margin:0 auto;" onclick="deleteClosedOrder(${idx})">🗑 Excluir do histórico</button>
-    <div style="height:8px;"></div>
+    <button class="btn btn-red btn-sm" style="width:auto;margin:0 auto 8px;" onclick="deleteClosedOrder(${idx})">🗑 Excluir do histórico</button>
     <button class="btn btn-outline" onclick="closeModal()">Fechar</button>
   `);
 }
-
 function deleteClosedOrder(idx) {
-  state.closed.splice(idx, 1);
-  save(); closeModal(); renderOrdersTab(); toast('Registro excluído');
+  S.closed.splice(idx,1); save(); closeModal(); renderOrders(); toast('Registro excluído');
 }
 
-// ── SETTINGS TAB ──────────────────────────────────────────────────────────────
-function renderSettingsTab() {
-  const nP = Object.keys(state.products).length;
-  const nC = Object.keys(state.clients).length;
-  const nO = Object.values(state.orders).filter(o=>Object.keys(o.items).length>0).length;
-  const nClosed = (state.closed || []).length;
-  const lastBackup = localStorage.getItem('csn_last_backup');
-  document.getElementById('main-content').innerHTML = `
-    <div class="card" style="margin-bottom:12px;">
-      <div class="card-title">Resumo dos dados</div>
+// ══════════════════════════════════════════════════════════
+// SETTINGS TAB
+// ══════════════════════════════════════════════════════════
+function renderSettings() {
+  const nP=Object.keys(S.products).length;
+  const nC=Object.keys(S.clients).length;
+  const nO=Object.values(S.orders).filter(o=>Object.keys(o.items||{}).length>0).length;
+  const nCl=(S.closed||[]).length;
+  const ghOk=S.ghToken&&S.ghRepo;
+
+  document.getElementById('content').innerHTML=`
+    <div class="card">
+      <div class="card-title">Resumo</div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center;">
-        <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;">
-          <div style="font-size:22px;font-weight:800;color:var(--accent2);">${nP}</div>
-          <div style="font-size:11px;color:var(--text2);margin-top:2px;">Produtos</div>
-        </div>
-        <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;">
-          <div style="font-size:22px;font-weight:800;color:var(--accent2);">${nC}</div>
-          <div style="font-size:11px;color:var(--text2);margin-top:2px;">Clientes</div>
-        </div>
-        <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;">
-          <div style="font-size:22px;font-weight:800;color:var(--amber);">${nO}</div>
-          <div style="font-size:11px;color:var(--text2);margin-top:2px;">Em aberto</div>
-        </div>
-        <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;">
-          <div style="font-size:22px;font-weight:800;color:var(--green);">${nClosed}</div>
-          <div style="font-size:11px;color:var(--text2);margin-top:2px;">Pagos ✅</div>
-        </div>
+        ${[['Produtos',nP,'var(--accent2)'],['Clientes',nC,'var(--accent2)'],['Em aberto',nO,'var(--amber)'],['Pagos ✅',nCl,'var(--green)']].map(([l,v,c])=>
+          `<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;">
+            <div style="font-size:20px;font-weight:800;color:${c};">${v}</div>
+            <div style="font-size:10px;color:var(--text2);margin-top:2px;">${l}</div>
+          </div>`).join('')}
       </div>
     </div>
-    <div class="card" style="margin-bottom:12px;">
-      <div class="card-title">💾 Backup</div>
-      <p style="font-size:14px;color:var(--text2);margin-bottom:14px;">Exporta todos os dados para um arquivo <code style="background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:12px;">.json</code>. Salve onde preferir.</p>
-      ${lastBackup ? `<div style="font-size:12px;color:var(--text3);margin-bottom:12px;">Último backup: ${lastBackup}</div>` : ''}
-      <button class="btn btn-primary" onclick="exportBackup()">⬇️ Exportar Backup</button>
+
+    <div class="card">
+      <div class="card-title">☁️ Sincronização GitHub</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.6;">
+        Salva os dados automaticamente em um arquivo <code style="background:var(--bg3);padding:1px 5px;border-radius:4px;">dados.json</code> no seu repositório do GitHub. Os dados ficam seguros mesmo trocando de celular.
+        ${ghOk?`<br><br>✅ Conectado: <strong>${S.ghRepo}</strong>`:''}
+      </div>
+      <button class="btn ${ghOk?'btn-outline':'btn-primary'}" style="margin-bottom:10px;" onclick="showGitHubSetup()">${ghOk?'⚙️ Alterar configuração':'🔗 Conectar ao GitHub'}</button>
+      ${ghOk?`<button class="btn btn-green" onclick="manualSync()">☁️ Sincronizar agora</button>`:''}
     </div>
-    <div class="card" style="margin-bottom:12px;">
-      <div class="card-title">📂 Restaurar Backup</div>
-      <p style="font-size:14px;color:var(--text2);margin-bottom:14px;">Importe um backup gerado por este app. Dados atuais serão <strong>substituídos</strong>.</p>
+
+    <div class="card">
+      <div class="card-title">💾 Backup local</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">Exporta todos os dados para um arquivo .json para guardar como cópia extra.</p>
+      <button class="btn btn-primary" style="margin-bottom:10px;" onclick="exportBackup()">⬇️ Exportar backup</button>
       <label style="display:block;width:100%;">
-        <div class="btn btn-outline" style="cursor:pointer;">⬆️ Selecionar arquivo .json</div>
+        <div class="btn btn-outline" style="cursor:pointer;">⬆️ Importar backup</div>
         <input type="file" accept=".json" onchange="importBackup(event)" style="display:none;"/>
       </label>
     </div>
+
     <div class="card">
       <div class="card-title" style="color:var(--red);">⚠️ Zona de perigo</div>
-      <p style="font-size:14px;color:var(--text2);margin-bottom:14px;">Apaga todos os dados permanentemente. Faça um backup antes!</p>
-      <button class="btn btn-red" onclick="clearAllData()">🗑 Apagar todos os dados</button>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">Apaga todos os dados permanentemente.</p>
+      <button class="btn btn-red" onclick="clearAll()">🗑 Apagar todos os dados</button>
     </div>
     <div style="height:12px;"></div>
   `;
 }
 
-function exportBackup() {
-  const data = { version:1, exportedAt:new Date().toISOString(), products:state.products, clients:state.clients, orders:state.orders, closed:state.closed };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url; a.download = `consignado-backup-${new Date().toISOString().slice(0,10)}.json`;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-  localStorage.setItem('csn_last_backup', new Date().toLocaleString('pt-BR'));
-  toast('Backup exportado!'); renderSettingsTab();
+// ── GitHub Setup ──
+function showGitHubSetup() {
+  showModal(`
+    <div class="modal-handle"></div>
+    <div class="modal-title">🔗 Configurar GitHub</div>
+    <div class="modal-sub">Os dados serão salvos automaticamente no repositório configurado abaixo.</div>
+
+    <div class="form-group">
+      <label class="form-label">Repositório (usuário/repo) *</label>
+      <input class="form-input" id="gh-repo" placeholder="Ex: douglasmenegasso/consignado" value="${S.ghRepo}"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Token de acesso pessoal (PAT) *</label>
+      <input class="form-input" id="gh-token" type="password" placeholder="ghp_xxxxxxxxxxxx" value="${S.ghToken}"/>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px;line-height:1.5;">
+        Gere em: github.com → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new token → marque <strong>repo</strong> → Generate
+      </div>
+    </div>
+    <div class="row">
+      <div class="form-group"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button></div>
+      <div class="form-group"><button class="btn btn-primary" onclick="saveGitHubConfig()">Salvar e testar</button></div>
+    </div>
+  `);
 }
 
+async function saveGitHubConfig() {
+  const repo=document.getElementById('gh-repo').value.trim();
+  const token=document.getElementById('gh-token').value.trim();
+  if(!repo||!token){ toast('Preencha todos os campos','err'); return; }
+  S.ghRepo=repo; S.ghToken=token;
+  saveLocal();
+  toast('Testando conexão…','info');
+  closeModal();
+  try {
+    // Test by loading (or creating) the file
+    const loaded = await ghLoad();
+    if (!loaded) await ghSave(); // create file if first time
+    toast('✅ GitHub conectado e sincronizado!','ok');
+  } catch(e) {
+    toast('Erro: ' + e.message,'err');
+  }
+  renderSettings();
+}
+
+async function manualSync() {
+  toast('Sincronizando…','info');
+  try { await ghSave(); toast('✅ Sincronizado!','ok'); } catch(e) { toast('Erro: '+e.message,'err'); }
+}
+
+// ── Backup local ──
+function exportBackup() {
+  const data={version:1,exportedAt:new Date().toISOString(),products:S.products,clients:S.clients,orders:S.orders,closed:S.closed};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`consignado-backup-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  toast('Backup exportado!');
+}
 function importBackup(event) {
-  const file = event.target.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
+  const file=event.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=(e)=>{
     try {
-      const data = JSON.parse(e.target.result);
-      if (!data.products || !data.clients || !data.orders) { toast('Arquivo inválido', 'error'); return; }
+      const data=JSON.parse(e.target.result);
+      if(!data.products||!data.clients) { toast('Arquivo inválido','err'); return; }
       showModal(`
         <div class="modal-handle"></div>
-        <div class="modal-title">Confirmar restauração</div>
+        <div class="modal-title">Confirmar importação</div>
         <div class="modal-sub">Backup de ${new Date(data.exportedAt).toLocaleString('pt-BR')}. Dados atuais serão substituídos.</div>
-        <div class="card" style="margin-bottom:16px;">
-          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text2);">Produtos</span><strong>${Object.keys(data.products).length}</strong></div>
-          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text2);">Clientes</span><strong>${Object.keys(data.clients).length}</strong></div>
-          <div style="display:flex;justify-content:space-between;padding:6px 0;"><span style="color:var(--text2);">Pedidos</span><strong>${Object.keys(data.orders).length}</strong></div>
-        </div>
         <div class="row">
           <div class="form-group"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button></div>
-          <div class="form-group"><button class="btn btn-primary" onclick='applyBackup(${JSON.stringify(JSON.stringify(data))})'>Restaurar</button></div>
+          <div class="form-group"><button class="btn btn-primary" onclick='applyBackup(${JSON.stringify(JSON.stringify(data))})'>Importar</button></div>
         </div>
       `);
-    } catch(err) { toast('Erro ao ler o arquivo', 'error'); }
+    } catch(e){ toast('Erro ao ler arquivo','err'); }
   };
   reader.readAsText(file);
 }
-
 function applyBackup(jsonStr) {
-  try {
-    const data = JSON.parse(jsonStr);
-    state.products = data.products; state.clients = data.clients; state.orders = data.orders; state.closed = data.closed || []; state.activeClient = null;
-    save(); closeModal(); toast('Backup restaurado!'); renderSettingsTab();
-  } catch(e) { toast('Erro ao restaurar', 'error'); }
+  const data=JSON.parse(jsonStr);
+  S.products=data.products; S.clients=data.clients;
+  S.orders=data.orders||{}; S.closed=data.closed||[];
+  S.activeClient=null;
+  save(); closeModal(); toast('Backup importado!'); renderSettings();
 }
-
-function clearAllData() {
+function clearAll() {
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title" style="color:var(--red);">Apagar tudo?</div>
-    <div class="modal-sub">Todos os produtos, clientes e pedidos serão deletados. Não pode ser desfeito.</div>
-    <div class="row" style="margin-top:8px;">
+    <div class="modal-sub">Todos os dados serão apagados permanentemente.</div>
+    <div class="row">
       <div class="form-group"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button></div>
       <div class="form-group"><button class="btn btn-red" onclick="confirmClearAll()">Apagar tudo</button></div>
     </div>
   `);
 }
 function confirmClearAll() {
-  state.products={}; state.clients={}; state.orders={}; state.closed=[]; state.activeClient=null;
-  save(); closeModal(); toast('Todos os dados apagados'); renderSettingsTab();
+  S.products={}; S.clients={}; S.orders={}; S.closed=[]; S.activeClient=null;
+  save(); closeModal(); toast('Dados apagados'); renderSettings();
 }
 
-// ── INIT ──────────────────────────────────────────────────────────────────────
-showTab('scan');
+// ══════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════
+async function init() {
+  // Try to load from GitHub on startup
+  if (S.ghToken && S.ghRepo) {
+    try { await ghLoad(); } catch(e) { console.warn('GH load failed', e); }
+  }
+  showTab('scan');
+}
+init();
 </script>
 </body>
 </html>
