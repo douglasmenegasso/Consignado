@@ -257,13 +257,22 @@ function _getCanvas() {
 function _getZXHints() {
   if (!_zxHints) {
     const h = new Map();
-    h.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[
-      ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
-      ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39, ZXing.BarcodeFormat.UPC_A,
-      ZXing.BarcodeFormat.UPC_E, ZXing.BarcodeFormat.ITF, ZXing.BarcodeFormat.DATA_MATRIX,
-      ZXing.BarcodeFormat.AZTEC, ZXing.BarcodeFormat.PDF_417, ZXing.BarcodeFormat.CODABAR
+    h.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+      ZXing.BarcodeFormat.QR_CODE,
+      ZXing.BarcodeFormat.EAN_13,
+      ZXing.BarcodeFormat.EAN_8,
+      ZXing.BarcodeFormat.CODE_128,
+      ZXing.BarcodeFormat.CODE_39,
+      ZXing.BarcodeFormat.UPC_A,
+      ZXing.BarcodeFormat.UPC_E,
+      ZXing.BarcodeFormat.ITF,
+      ZXing.BarcodeFormat.DATA_MATRIX,
+      ZXing.BarcodeFormat.AZTEC,
+      ZXing.BarcodeFormat.PDF_417,
+      ZXing.BarcodeFormat.CODABAR
     ]);
     h.set(ZXing.DecodeHintType.TRY_HARDER, true);
+    h.set(ZXing.DecodeHintType.ALSO_INVERTED, true);
     _zxHints = h;
   }
   return _zxHints;
@@ -283,15 +292,28 @@ async function _startScan(videoId, onCode) {
 
   try {
     _stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720} }
+      video: {
+        facingMode: { ideal: 'environment' },
+        width:  { min: 320, ideal: 1280, max: 1920 },
+        height: { min: 240, ideal: 720,  max: 1080 }
+      }
+    }).catch(() => {
+      // Fallback: minimal constraints if ideal fails (older iOS)
+      return navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     });
     video.srcObject = _stream;
-    video.setAttribute('playsinline','');
-    video.muted = true;
-    video.autoplay = true;
-    await new Promise((res,rej) => {
-      video.onloadedmetadata = () => video.play().then(res).catch(rej);
-      setTimeout(()=>rej(new Error('timeout')), 8000);
+    video.setAttribute('playsinline', 'true');
+    video.setAttribute('webkit-playsinline', 'true');
+    video.setAttribute('muted', 'true');
+    video.muted  = true;
+    video.volume = 0;
+
+    await new Promise((res, rej) => {
+      const tid = setTimeout(() => rej(new Error('timeout')), 10000);
+      const go = () => { clearTimeout(tid); video.play().then(res).catch(rej); };
+      // canplay fires when enough data is ready — more reliable on iOS than loadedmetadata
+      if (video.readyState >= 3) { go(); }
+      else { video.addEventListener('canplay', go, { once: true }); }
     });
     _running = true;
 
@@ -313,21 +335,46 @@ async function _startScan(videoId, onCode) {
       };
       _rafId = requestAnimationFrame(loop);
     } else {
+      // iOS Safari / Firefox fallback — canvas frame-by-frame decode
       const reader = new ZXing.MultiFormatReader();
       reader.setHints(_getZXHints());
+
+      // Wait for video to stabilise on iOS
+      await new Promise(r => setTimeout(r, 600));
+
+      const W = 480; // smaller = faster decode on iOS
+      let frameCount = 0;
+
       const loop = () => {
         if (!_running) return;
-        try {
-          if (video.readyState>=2 && video.videoWidth>0) {
-            canvas.width=video.videoWidth; canvas.height=video.videoHeight;
-            ctx.drawImage(video,0,0,canvas.width,canvas.height);
-            const id=ctx.getImageData(0,0,canvas.width,canvas.height);
-            const lum=new ZXing.RGBLuminanceSource(id.data,canvas.width,canvas.height);
-            const bmp=new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
-            try { const r=reader.decode(bmp); if(r) emit(r.getText()); } catch(e){}
-          }
-        } catch(e){}
-        if (_running) _rafId=requestAnimationFrame(loop);
+        frameCount++;
+        if (frameCount % 4 === 0 && video.readyState >= 2 && video.videoWidth > 0) {
+          try {
+            const ratio  = video.videoHeight / video.videoWidth;
+            canvas.width  = W;
+            canvas.height = Math.round(W * ratio);
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // ZXing @0.19.1 RGBLuminanceSource wants a flat Uint8ClampedArray
+            // of RGB triplets (NOT RGBA). Build it manually.
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const rgba    = imgData.data;                        // Uint8ClampedArray RGBA
+            const rgb     = new Uint8ClampedArray(canvas.width * canvas.height * 3);
+            for (let i = 0, j = 0; i < rgba.length; i += 4, j += 3) {
+              rgb[j]   = rgba[i];
+              rgb[j+1] = rgba[i+1];
+              rgb[j+2] = rgba[i+2];
+            }
+
+            try {
+              const lum    = new ZXing.RGBLuminanceSource(rgb, canvas.width, canvas.height);
+              const bitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
+              const result = reader.decode(bitmap);
+              if (result) emit(result.getText());
+            } catch(e) { /* NotFoundException — no code in frame, normal */ }
+          } catch(outer) { /* drawImage may fail if video not ready */ }
+        }
+        if (_running) _rafId = requestAnimationFrame(loop);
       };
       _rafId = requestAnimationFrame(loop);
     }
