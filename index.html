@@ -8,7 +8,6 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Consignado">
 <title>Consignado App</title>
-<script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
 <style>
 :root{
   --bg:#0f0f12;--bg2:#18181f;--bg3:#22222c;--surface:#1e1e28;
@@ -41,9 +40,13 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .btn-sm{padding:8px 14px;font-size:13px;width:auto;}
 .form-group{margin-bottom:14px;}
 .form-label{font-size:13px;color:var(--text2);margin-bottom:6px;display:block;}
-.form-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;font-size:16px;color:var(--text);font-family:var(--font);outline:none;transition:border-color .15s;}
+.form-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;font-size:16px;color:var(--text);font-family:var(--font);outline:none;transition:border-color .15s;-webkit-appearance:none;}
 .form-input:focus{border-color:var(--accent);}
 .form-input::placeholder{color:var(--text3);}
+.search-wrap{position:relative;margin-bottom:14px;}
+.search-wrap .form-input{padding-left:40px;}
+.search-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none;}
+/* Scanner */
 .scan-box{position:relative;border-radius:var(--radius);overflow:hidden;background:#000;aspect-ratio:4/3;margin-bottom:4px;}
 .scan-box video{width:100%;height:100%;object-fit:cover;display:block;}
 .scan-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;}
@@ -56,6 +59,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .scan-line{position:absolute;width:100%;height:2px;background:linear-gradient(90deg,transparent,var(--accent2),transparent);animation:scanline 2s linear infinite;}
 @keyframes scanline{0%{top:0}100%{top:100%}}
 .cam-overlay{position:absolute;inset:0;background:rgba(15,15,18,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;text-align:center;border-radius:var(--radius);}
+/* Manual code entry bar */
+.manual-bar{display:flex;gap:8px;margin-bottom:14px;}
+.manual-bar .form-input{flex:1;padding:12px 14px;font-size:15px;}
+.manual-bar button{flex-shrink:0;padding:12px 16px;border-radius:var(--radius-sm);border:none;background:var(--accent);color:#fff;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;}
+/* Items */
 .item-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
 .item-row:last-child{border-bottom:none;}
 .item-icon{width:38px;height:38px;border-radius:var(--radius-sm);background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
@@ -66,6 +74,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .client-card{background:var(--bg3);border-radius:var(--radius-sm);padding:12px 14px;display:flex;align-items:center;gap:12px;margin-bottom:8px;cursor:pointer;border:1px solid transparent;transition:border-color .15s;}
 .client-card:active{border-color:var(--accent);}
 .avatar{border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;flex-shrink:0;}
+/* Modal */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:flex-end;z-index:100;animation:fadeIn .15s;}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 .modal{background:var(--bg2);border-radius:var(--radius) var(--radius) 0 0;width:100%;padding:20px;padding-bottom:calc(20px + env(safe-area-inset-bottom));max-height:90dvh;overflow-y:auto;animation:slideUp .2s;}
@@ -73,6 +82,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 20px;}
 .modal-title{font-size:20px;font-weight:700;margin-bottom:6px;}
 .modal-sub{font-size:14px;color:var(--text2);margin-bottom:16px;line-height:1.5;}
+/* Toast */
 .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--border);border-radius:30px;padding:10px 20px;font-size:14px;font-weight:500;z-index:200;white-space:nowrap;animation:toastIn .2s;pointer-events:none;}
 @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 .toast.ok{border-color:var(--green);color:var(--green);}
@@ -123,325 +133,254 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 // STATE
 // ══════════════════════════════════════════════════════════
 const DB = {
-  load(k, def){ try{ return JSON.parse(localStorage.getItem(k)) ?? def; }catch{ return def; } },
-  save(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
+  load(k,d){ try{ const v=localStorage.getItem(k); return v!=null?JSON.parse(v):d; }catch{ return d; } },
+  save(k,v){ localStorage.setItem(k,JSON.stringify(v)); }
 };
-
 let S = {
-  products:      DB.load('csn_products', {}),
-  clients:       DB.load('csn_clients',  {}),
-  orders:        DB.load('csn_orders',   {}),   // open orders
-  closed:        DB.load('csn_closed',   []),    // paid/closed orders
-  ghToken:       DB.load('csn_ghtoken',  ''),
-  ghRepo:        DB.load('csn_ghrepo',   ''),    // "user/repo"
-  activeClient:  null,
-  scanMode:      'sale',   // 'sale' | 'return'
-  tab:           'scan'
+  products: DB.load('csn_products',{}),
+  clients:  DB.load('csn_clients', {}),
+  orders:   DB.load('csn_orders',  {}),
+  closed:   DB.load('csn_closed',  []),
+  ghToken:  DB.load('csn_ghtoken', ''),
+  ghRepo:   DB.load('csn_ghrepo',  ''),
+  activeClient: null,
+  scanMode: 'sale',
+  tab: 'scan'
 };
 
-function saveLocal() {
-  DB.save('csn_products', S.products);
-  DB.save('csn_clients',  S.clients);
-  DB.save('csn_orders',   S.orders);
-  DB.save('csn_closed',   S.closed);
-  DB.save('csn_ghtoken',  S.ghToken);
-  DB.save('csn_ghrepo',   S.ghRepo);
+function saveLocal(){
+  DB.save('csn_products',S.products);
+  DB.save('csn_clients', S.clients);
+  DB.save('csn_orders',  S.orders);
+  DB.save('csn_closed',  S.closed);
 }
+async function save(){ saveLocal(); syncGitHub(false); }
 
 // ══════════════════════════════════════════════════════════
 // GITHUB SYNC
 // ══════════════════════════════════════════════════════════
-const GH_FILE = 'dados.json';
-
-async function ghRequest(method, path, body) {
-  if (!S.ghToken || !S.ghRepo) return null;
-  const res = await fetch(`https://api.github.com/repos/${S.ghRepo}/contents/${path}`, {
-    method,
-    headers: {
-      'Authorization': `token ${S.ghToken}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/vnd.github.v3+json'
-    },
-    body: body ? JSON.stringify(body) : undefined
+const GH_FILE='dados.json';
+async function ghReq(method,path,body){
+  if(!S.ghToken||!S.ghRepo) return null;
+  const r=await fetch(`https://api.github.com/repos/${S.ghRepo}/contents/${path}`,{
+    method, headers:{'Authorization':'token '+S.ghToken,'Content-Type':'application/json','Accept':'application/vnd.github.v3+json'},
+    body:body?JSON.stringify(body):undefined
   });
-  if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
-  return res.json();
+  if(!r.ok){ const e=await r.json(); throw new Error(e.message); }
+  return r.json();
 }
-
-async function ghLoad() {
-  if (!S.ghToken || !S.ghRepo) return false;
-  try {
-    const file = await ghRequest('GET', GH_FILE);
-    const data = JSON.parse(atob(file.content.replace(/\n/g, '')));
-    S.products = data.products || {};
-    S.clients  = data.clients  || {};
-    S.orders   = data.orders   || {};
-    S.closed   = data.closed   || [];
-    saveLocal();
-    return true;
-  } catch(e) {
-    if (e.message && e.message.includes('Not Found')) return false; // file doesn't exist yet
-    throw e;
-  }
+async function ghLoad(){
+  if(!S.ghToken||!S.ghRepo) return false;
+  try{
+    const f=await ghReq('GET',GH_FILE);
+    const d=JSON.parse(atob(f.content.replace(/\n/g,'')));
+    S.products=d.products||{}; S.clients=d.clients||{}; S.orders=d.orders||{}; S.closed=d.closed||[];
+    saveLocal(); return true;
+  }catch(e){ if(e.message&&e.message.includes('Not Found')) return false; throw e; }
 }
-
-async function ghSave() {
-  if (!S.ghToken || !S.ghRepo) return;
-  const data = { products: S.products, clients: S.clients, orders: S.orders, closed: S.closed, savedAt: new Date().toISOString() };
-  const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
-  // Get current SHA if file exists
-  let sha;
-  try { const f = await ghRequest('GET', GH_FILE); sha = f.sha; } catch(e) {}
-  await ghRequest('PUT', GH_FILE, {
-    message: `Sync ${new Date().toLocaleString('pt-BR')}`,
-    content,
-    ...(sha ? { sha } : {})
-  });
+async function ghSave(){
+  if(!S.ghToken||!S.ghRepo) return;
+  const d={products:S.products,clients:S.clients,orders:S.orders,closed:S.closed,savedAt:new Date().toISOString()};
+  const content=btoa(unescape(encodeURIComponent(JSON.stringify(d,null,2))));
+  let sha; try{ const f=await ghReq('GET',GH_FILE); sha=f.sha; }catch(e){}
+  await ghReq('PUT',GH_FILE,{message:'Sync '+new Date().toLocaleString('pt-BR'),content,...(sha?{sha}:{})});
 }
-
-async function syncGitHub(showFeedback = true) {
-  if (!S.ghToken || !S.ghRepo) {
-    if (showFeedback) toast('Configure o GitHub nas ⚙️ Configurações', 'info');
-    return;
-  }
-  if (showFeedback) toast('Sincronizando com GitHub…', 'info');
-  try {
-    await ghSave();
-    if (showFeedback) toast('✓ Sincronizado com GitHub!', 'ok');
-  } catch(e) {
-    toast('Erro ao sincronizar: ' + e.message, 'err');
-  }
-}
-
-// Auto-sync after every save
-async function save() {
-  saveLocal();
-  syncGitHub(false);
+async function syncGitHub(show=true){
+  if(!S.ghToken||!S.ghRepo){ if(show) toast('Configure o GitHub nas ⚙️ Config','info'); return; }
+  try{ await ghSave(); if(show) toast('✓ Sincronizado!','ok'); }
+  catch(e){ toast('Erro GitHub: '+e.message,'err'); }
 }
 
 // ══════════════════════════════════════════════════════════
 // UTILS
 // ══════════════════════════════════════════════════════════
-function fmt(v)     { return 'R$ ' + Number(v||0).toFixed(2).replace('.', ','); }
+function fmt(v)     { return 'R$ '+Number(v||0).toFixed(2).replace('.',','); }
 function initials(n){ return (n||'?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase(); }
 function fmtDate(iso){ return new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}); }
 
-function toast(msg, type='ok') {
-  const el = document.createElement('div');
-  el.className = `toast ${type}`;
-  el.textContent = msg;
+function toast(msg,type='ok'){
+  const el=document.createElement('div');
+  el.className='toast '+type; el.textContent=msg;
   document.getElementById('toast-root').appendChild(el);
-  setTimeout(() => el.remove(), 3000);
+  setTimeout(()=>el.remove(),3000);
 }
-
-function showModal(html) {
+function showModal(html){
   closeModal();
-  document.getElementById('modal-root').innerHTML =
+  document.getElementById('modal-root').innerHTML=
     `<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">${html}</div></div>`;
 }
-function closeModal() {
-  _stopModalScan();
-  document.getElementById('modal-root').innerHTML = '';
-}
+function closeModal(){ _stopModalScan(); document.getElementById('modal-root').innerHTML=''; }
 
 // ══════════════════════════════════════════════════════════
-// SCANNER ENGINE
+// SCANNER ENGINE — iOS Safari (ZXing canvas loop)
 // ══════════════════════════════════════════════════════════
-let _stream=null, _running=false, _rafId=null, _canvas=null, _ctx=null, _zxHints=null;
+let _stream=null,_running=false,_rafId=null,_canvas=null,_ctx=null;
 
-function _getCanvas() {
-  if (!_canvas) { _canvas=document.createElement('canvas'); _ctx=_canvas.getContext('2d',{willReadFrequently:true}); }
-  return {canvas:_canvas, ctx:_ctx};
+function _getCanvas(){
+  if(!_canvas){ _canvas=document.createElement('canvas'); _ctx=_canvas.getContext('2d',{willReadFrequently:true}); }
+  return {c:_canvas,x:_ctx};
 }
 
-function _getZXHints() {
-  if (!_zxHints) {
-    const h = new Map();
-    h.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-      ZXing.BarcodeFormat.QR_CODE,
-      ZXing.BarcodeFormat.EAN_13,
-      ZXing.BarcodeFormat.EAN_8,
-      ZXing.BarcodeFormat.CODE_128,
-      ZXing.BarcodeFormat.CODE_39,
-      ZXing.BarcodeFormat.UPC_A,
-      ZXing.BarcodeFormat.UPC_E,
-      ZXing.BarcodeFormat.ITF,
-      ZXing.BarcodeFormat.DATA_MATRIX,
-      ZXing.BarcodeFormat.AZTEC,
-      ZXing.BarcodeFormat.PDF_417,
-      ZXing.BarcodeFormat.CODABAR
-    ]);
-    h.set(ZXing.DecodeHintType.TRY_HARDER, true);
-    h.set(ZXing.DecodeHintType.ALSO_INVERTED, true);
-    _zxHints = h;
-  }
-  return _zxHints;
+function _getHints(){
+  const h=new Map();
+  h.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[
+    ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+    ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
+    ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E,
+    ZXing.BarcodeFormat.ITF, ZXing.BarcodeFormat.DATA_MATRIX,
+    ZXing.BarcodeFormat.AZTEC, ZXing.BarcodeFormat.PDF_417
+  ]);
+  h.set(ZXing.DecodeHintType.TRY_HARDER,true);
+  return h;
 }
 
-async function _stopStream() {
-  _running = false;
-  if (_rafId) { cancelAnimationFrame(_rafId); _rafId=null; }
-  if (_stream) { _stream.getTracks().forEach(t=>t.stop()); _stream=null; }
-  await new Promise(r=>setTimeout(r,150));
+async function _stopStream(){
+  _running=false;
+  if(_rafId){ cancelAnimationFrame(_rafId); _rafId=null; }
+  if(_stream){ _stream.getTracks().forEach(t=>t.stop()); _stream=null; }
+  await new Promise(r=>setTimeout(r,200));
 }
 
-async function _startScan(videoId, onCode) {
+async function _startScan(videoId, onCode){
   await _stopStream();
-  const video = document.getElementById(videoId);
-  if (!video) return;
+  const video=document.getElementById(videoId);
+  if(!video) return;
 
-  try {
-    _stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: 'environment' },
-        width:  { min: 320, ideal: 1280, max: 1920 },
-        height: { min: 240, ideal: 720,  max: 1080 }
-      }
-    }).catch(() => {
-      // Fallback: minimal constraints if ideal fails (older iOS)
-      return navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+  try{
+    // Try ideal constraints first, fall back to bare minimum for older iOS
+    try{
+      _stream=await navigator.mediaDevices.getUserMedia({
+        video:{facingMode:{exact:'environment'},width:{ideal:1280},height:{ideal:720}}
+      });
+    }catch(e){
+      _stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    }
+
+    // iOS requires these exact attributes
+    video.setAttribute('playsinline','');
+    video.setAttribute('webkit-playsinline','');
+    video.setAttribute('autoplay','');
+    video.setAttribute('muted','');
+    video.muted=true; video.autoplay=true; video.playsInline=true;
+    video.srcObject=_stream;
+
+    await new Promise((res,rej)=>{
+      const tid=setTimeout(()=>rej(new Error('Camera timeout')),10000);
+      const tryPlay=()=>{ clearTimeout(tid); video.play().then(res).catch(rej); };
+      if(video.readyState>=3){ tryPlay(); }
+      else{ video.addEventListener('canplay',tryPlay,{once:true}); }
     });
-    video.srcObject = _stream;
-    video.setAttribute('playsinline', 'true');
-    video.setAttribute('webkit-playsinline', 'true');
-    video.setAttribute('muted', 'true');
-    video.muted  = true;
-    video.volume = 0;
 
-    await new Promise((res, rej) => {
-      const tid = setTimeout(() => rej(new Error('timeout')), 10000);
-      const go = () => { clearTimeout(tid); video.play().then(res).catch(rej); };
-      // canplay fires when enough data is ready — more reliable on iOS than loadedmetadata
-      if (video.readyState >= 3) { go(); }
-      else { video.addEventListener('canplay', go, { once: true }); }
-    });
-    _running = true;
+    _running=true;
 
-    let _last='', _lastT=0;
-    function emit(code) {
+    // Wait for iOS camera to stabilise
+    await new Promise(r=>setTimeout(r,800));
+
+    let _last='',_lastT=0;
+    function emit(code){
       const now=Date.now();
-      if (code===_last && now-_lastT<2500) return;
+      if(code===_last&&now-_lastT<2500) return;
       _last=code; _lastT=now; onCode(code);
     }
 
-    const {canvas,ctx} = _getCanvas();
+    const reader=new ZXing.MultiFormatReader();
+    reader.setHints(_getHints());
+    const {c,x}=_getCanvas();
+    let tick=0;
 
-    if ('BarcodeDetector' in window) {
-      const det = new BarcodeDetector({formats:['qr_code','ean_13','ean_8','code_128','code_39','upc_a','upc_e','itf','data_matrix','aztec','pdf417','codabar']});
-      const loop = async () => {
-        if (!_running) return;
-        try { if(video.readyState>=2){ const r=await det.detect(video); if(r.length) emit(r[0].rawValue); } } catch(e){}
-        if (_running) _rafId=requestAnimationFrame(loop);
-      };
-      _rafId = requestAnimationFrame(loop);
-    } else {
-      // iOS Safari / Firefox fallback — canvas frame-by-frame decode
-      const reader = new ZXing.MultiFormatReader();
-      reader.setHints(_getZXHints());
+    const loop=()=>{
+      if(!_running) return;
+      tick++;
+      // Decode every 5th frame — iOS CPU is limited
+      if(tick%5===0 && video.readyState>=2 && video.videoWidth>0){
+        try{
+          // Downscale to 480px wide — enough for most codes, saves CPU
+          const W=480, H=Math.round(480*(video.videoHeight/video.videoWidth));
+          c.width=W; c.height=H;
+          x.drawImage(video,0,0,W,H);
+          const id=x.getImageData(0,0,W,H);
+          const rgba=id.data;
+          // ZXing RGBLuminanceSource needs flat RGB (3 bytes per pixel, no alpha)
+          const rgb=new Uint8ClampedArray(W*H*3);
+          for(let i=0,j=0;i<rgba.length;i+=4,j+=3){
+            rgb[j]=rgba[i]; rgb[j+1]=rgba[i+1]; rgb[j+2]=rgba[i+2];
+          }
+          const lum=new ZXing.RGBLuminanceSource(rgb,W,H);
+          const bmp=new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
+          try{ const r=reader.decode(bmp); if(r) emit(r.getText()); }
+          catch(e){/* NotFoundException — normal */}
+        }catch(e){}
+      }
+      if(_running) _rafId=requestAnimationFrame(loop);
+    };
+    _rafId=requestAnimationFrame(loop);
 
-      // Wait for video to stabilise on iOS
-      await new Promise(r => setTimeout(r, 600));
-
-      const W = 480; // smaller = faster decode on iOS
-      let frameCount = 0;
-
-      const loop = () => {
-        if (!_running) return;
-        frameCount++;
-        if (frameCount % 4 === 0 && video.readyState >= 2 && video.videoWidth > 0) {
-          try {
-            const ratio  = video.videoHeight / video.videoWidth;
-            canvas.width  = W;
-            canvas.height = Math.round(W * ratio);
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            // ZXing @0.19.1 RGBLuminanceSource wants a flat Uint8ClampedArray
-            // of RGB triplets (NOT RGBA). Build it manually.
-            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const rgba    = imgData.data;                        // Uint8ClampedArray RGBA
-            const rgb     = new Uint8ClampedArray(canvas.width * canvas.height * 3);
-            for (let i = 0, j = 0; i < rgba.length; i += 4, j += 3) {
-              rgb[j]   = rgba[i];
-              rgb[j+1] = rgba[i+1];
-              rgb[j+2] = rgba[i+2];
-            }
-
-            try {
-              const lum    = new ZXing.RGBLuminanceSource(rgb, canvas.width, canvas.height);
-              const bitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
-              const result = reader.decode(bitmap);
-              if (result) emit(result.getText());
-            } catch(e) { /* NotFoundException — no code in frame, normal */ }
-          } catch(outer) { /* drawImage may fail if video not ready */ }
-        }
-        if (_running) _rafId = requestAnimationFrame(loop);
-      };
-      _rafId = requestAnimationFrame(loop);
-    }
-  } catch(err) {
-    _running = false;
-    const denied = err.name==='NotAllowedError';
-    const msg = denied
-      ? 'Câmera bloqueada pelo navegador.<br><br>📱 <b>Android:</b> toque no 🔒 → Permissões → Câmera<br>🍎 <b>iPhone:</b> Ajustes → Safari → Câmera → Permitir'
-      : 'Câmera não disponível: ' + err.message;
-    _showCamOverlay(msg, denied);
+  }catch(err){
+    _running=false;
+    const denied=err.name==='NotAllowedError'||err.name==='SecurityError';
+    const msg=denied
+      ? 'Câmera bloqueada.<br><br>🍎 <b>iPhone:</b> Ajustes → Safari → Câmera → Permitir<br><br>Ou use a entrada manual de código abaixo.'
+      : 'Câmera não disponível.<br>Use a entrada manual de código abaixo.<br><small style="color:var(--text3)">'+err.message+'</small>';
+    _showCamOverlay(msg,denied);
   }
 }
 
-// ── Main (scan tab) ──
-function _showCamOverlay(msg, showBtn=true) {
+// Main scanner
+function _showCamOverlay(msg,showBtn=true){
   const o=document.getElementById('cam-overlay'); if(!o) return;
   o.style.display='flex';
   const m=document.getElementById('cam-msg'); if(m) m.innerHTML=msg;
   const b=document.getElementById('cam-btn'); if(b) b.style.display=showBtn?'flex':'none';
 }
-function _hideCamOverlay() { const o=document.getElementById('cam-overlay'); if(o) o.style.display='none'; }
+function _hideCamOverlay(){ const o=document.getElementById('cam-overlay'); if(o) o.style.display='none'; }
+function requestCameraPermission(){ _hideCamOverlay(); _startScan('main-video',_onMainCode); }
 
-function requestCameraPermission() { _hideCamOverlay(); _startScan('main-video', _onMainCode); }
-
-async function _startMainScan() {
-  if (location.protocol==='file:') {
-    _showCamOverlay('Abra o app via HTTPS (ex: GitHub Pages) para usar a câmera.', false); return;
+async function _startMainScan(){
+  if(location.protocol==='file:'){
+    _showCamOverlay('Abra o app via HTTPS (GitHub Pages) para usar a câmera.<br>Use a entrada manual abaixo.',false); return;
   }
-  if (navigator.permissions) {
-    try {
+  if(navigator.permissions){
+    try{
       const p=await navigator.permissions.query({name:'camera'});
-      if (p.state==='denied') {
-        _showCamOverlay('Permissão negada.<br><br>📱 <b>Android:</b> Configurações → Apps → Navegador → Permissões<br>🍎 <b>iPhone:</b> Ajustes → Safari → Câmera → Permitir', false);
-        return;
-      }
-    } catch(e){}
+      if(p.state==='denied'){ _showCamOverlay('Permissão negada.<br><br>🍎 Ajustes → Safari → Câmera → Permitir',false); return; }
+    }catch(e){}
   }
   _hideCamOverlay();
-  _startScan('main-video', _onMainCode);
+  _startScan('main-video',_onMainCode);
 }
-function _stopMainScan() { _stopStream(); }
+function _stopMainScan(){ _stopStream(); }
 
-let _mainLast='', _mainLastT=0;
-function _onMainCode(code) {
+let _mainLast='',_mainLastT=0;
+function _onMainCode(code){
   const now=Date.now();
-  if(code===_mainLast && now-_mainLastT<2000) return;
+  if(code===_mainLast&&now-_mainLastT<2000) return;
   _mainLast=code; _mainLastT=now;
-  const product=S.products[code];
-  if (!product) { showRegisterProduct(code); return; }
-  if (S.scanMode==='sale')   handleSaleScan(code,product);
-  else                        handleReturnScan(code,product);
+  handleCode(code);
 }
 
-// ── Modal (product form) ──
+function handleCode(code){
+  code=code.trim();
+  if(!code) return;
+  const product=S.products[code];
+  if(!product){ showRegisterProduct(code); return; }
+  if(S.scanMode==='sale')   handleSaleScan(code,product);
+  else                       handleReturnScan(code,product);
+}
+
+// Modal scanner
 let _modalScanOn=false;
-function toggleModalScan() {
-  if (_modalScanOn) { _modalScanOn=false; _stopModalScan(); return; }
+function toggleModalScan(){
+  if(_modalScanOn){ _modalScanOn=false; _stopModalScan(); return; }
   _modalScanOn=true;
   const wrap=document.getElementById('modal-scan-wrap');
   const btn=document.getElementById('modal-scan-btn');
   if(wrap) wrap.style.display='block';
-  if(btn) { btn.style.background='var(--accent)'; btn.style.borderColor='var(--accent)'; btn.textContent='⏳'; btn.disabled=true; }
-  setTimeout(() => {
+  if(btn){ btn.style.background='var(--accent)'; btn.style.borderColor='var(--accent)'; btn.textContent='⏳'; btn.disabled=true; }
+  setTimeout(()=>{
     if(!_modalScanOn) return;
     const b=document.getElementById('modal-scan-btn');
     if(b){ b.textContent='📷'; b.disabled=false; }
-    _startScan('modal-video', (code) => {
+    _startScan('modal-video',(code)=>{
       _modalScanOn=false; _stopStream();
       const inp=document.getElementById('mp-code');
       const w=document.getElementById('modal-scan-wrap');
@@ -450,171 +389,178 @@ function toggleModalScan() {
       if(w)   w.style.display='none';
       if(b)   { b.style.background='var(--green)'; b.style.borderColor='var(--green)'; b.textContent='✓'; b.disabled=false; }
       toast('Código lido!');
-      setTimeout(()=>document.getElementById('mp-name')?.focus(), 150);
+      setTimeout(()=>document.getElementById('mp-name')?.focus(),150);
     });
-  }, 350);
+  },400);
 }
-function _stopModalScan() {
-  if(!_modalScanOn) return;
-  _modalScanOn=false;
+function _stopModalScan(){
+  if(!_modalScanOn) return; _modalScanOn=false;
   const w=document.getElementById('modal-scan-wrap');
   const b=document.getElementById('modal-scan-btn');
   if(w) w.style.display='none';
-  if(b) { b.style.background='var(--bg3)'; b.style.borderColor='var(--border)'; b.textContent='📷'; b.disabled=false; }
+  if(b){ b.style.background='var(--bg3)'; b.style.borderColor='var(--border)'; b.textContent='📷'; b.disabled=false; }
   _stopStream();
 }
 
 // ══════════════════════════════════════════════════════════
 // TABS
 // ══════════════════════════════════════════════════════════
-function showTab(tab) {
-  S.tab = tab;
-  ['scan','clients','products','orders','settings'].forEach(t =>
-    document.getElementById('nav-'+t).classList.toggle('active', t===tab));
+function showTab(tab){
+  S.tab=tab;
+  ['scan','clients','products','orders','settings'].forEach(t=>
+    document.getElementById('nav-'+t).classList.toggle('active',t===tab));
   _stopMainScan();
   document.getElementById('total-slot').innerHTML='';
-  if      (tab==='scan')     renderScan();
-  else if (tab==='clients')  renderClients();
-  else if (tab==='products') renderProducts();
-  else if (tab==='orders')   renderOrders();
-  else if (tab==='settings') renderSettings();
+  if     (tab==='scan')     renderScan();
+  else if(tab==='clients')  renderClients();
+  else if(tab==='products') renderProducts();
+  else if(tab==='orders')   renderOrders();
+  else if(tab==='settings') renderSettings();
 }
 
 // ══════════════════════════════════════════════════════════
 // SCAN TAB
 // ══════════════════════════════════════════════════════════
-function renderScan() {
-  const client = S.activeClient ? S.clients[S.activeClient] : null;
-  const order  = S.activeClient ? S.orders[S.activeClient]  : null;
-  const items  = order ? Object.values(order.items) : [];
-  const isClosed = order?.closed;
+function renderScan(){
+  const client=S.activeClient?S.clients[S.activeClient]:null;
+  const order=S.activeClient?S.orders[S.activeClient]:null;
+  const items=order?Object.values(order.items):[];
 
-  // Client banner
-  const clientBanner = client
-    ? `<div class="client-card" onclick="showClientPicker()">
-         <div class="avatar" style="width:44px;height:44px;font-size:16px;">${initials(client.name)}</div>
-         <div style="flex:1;"><div style="font-size:15px;font-weight:600;">${client.name}</div>
-         <div style="font-size:12px;color:var(--text2);">${client.phone}</div></div>
-         <div style="font-size:20px;color:var(--text2);">›</div>
-       </div>`
-    : `<button class="btn btn-outline" onclick="showClientPicker()" style="margin-bottom:4px;">👤 Selecionar / Novo Cliente</button>`;
+  const clientBanner=client
+    ?`<div class="client-card" onclick="showClientPicker()" style="margin-bottom:4px;">
+        <div class="avatar" style="width:44px;height:44px;font-size:16px;">${initials(client.name)}</div>
+        <div style="flex:1;"><div style="font-size:15px;font-weight:600;">${client.name}</div>
+        <div style="font-size:12px;color:var(--text2);">${client.phone}</div></div>
+        <div style="font-size:20px;color:var(--text2);">›</div>
+      </div>`
+    :`<button class="btn btn-outline" onclick="showClientPicker()" style="margin-bottom:4px;">👤 Selecionar / Novo Cliente</button>`;
 
-  // Items list
-  const itemsHtml = items.length ? `<div class="card">
-    <div class="card-title">Itens no pedido ${isClosed?'<span class="badge badge-green">ENCERRADO</span>':''}</div>
+  const itemsHtml=items.length?`<div class="card">
+    <div class="card-title">Itens no pedido</div>
     ${items.map(i=>`<div class="item-row">
       <div class="item-icon">📦</div>
       <div class="item-info"><div class="item-name">${i.name}</div><div class="item-sub">${i.code}</div></div>
-      ${!isClosed ? `<div class="qty-ctrl">
+      <div class="qty-ctrl">
         <button class="qty-btn" onclick="changeQty('${i.code}',-1)">−</button>
         <span class="qty-num">${i.qty}</span>
         <button class="qty-btn" onclick="changeQty('${i.code}',1)">+</button>
-      </div>` : `<span style="font-size:13px;color:var(--text2);">×${i.qty}</span>`}
+      </div>
       <div class="item-price">${fmt(i.price*i.qty)}</div>
     </div>`).join('')}
-  </div>` : '';
+  </div>`:'';
 
-  // Action buttons
-  let actionBtns = '';
-  if (client && items.length && !isClosed) {
-    actionBtns = `
-      <button class="btn btn-green" style="margin-bottom:10px;" onclick="showCloseOrderModal()">✅ Fechar pedido e registrar pagamento</button>
-      <button class="btn btn-outline" onclick="setScanMode('return');renderScan()">↩ Modo devolução</button>`;
-  }
+  const actionBtns=client&&items.length
+    ?`<button class="btn btn-green" style="margin-bottom:10px;" onclick="showCloseOrderModal()">✅ Fechar pedido e registrar pagamento</button>`
+    :'';
 
-  document.getElementById('content').innerHTML = `
-    <div style="margin-bottom:14px;">${clientBanner}</div>
-    ${!isClosed ? `<div class="mode-bar">
+  document.getElementById('content').innerHTML=`
+    <div style="margin-bottom:12px;">${clientBanner}</div>
+    <div class="mode-bar">
       <button class="mode-opt ${S.scanMode==='sale'?'active':''}" onclick="setScanMode('sale')">🛒 Venda</button>
       <button class="mode-opt ${S.scanMode==='return'?'active':''}" onclick="setScanMode('return')">↩ Devolução</button>
-    </div>` : ''}
+    </div>
+
+    <!-- Camera -->
     <div class="scan-box">
-      <video id="main-video" playsinline muted autoplay></video>
+      <video id="main-video" playsinline webkit-playsinline muted autoplay></video>
       <div class="scan-overlay"><div class="scan-frame">
         <span class="sc tl"></span><span class="sc tr"></span>
         <span class="sc bl"></span><span class="sc br"></span>
         <div class="scan-line"></div>
       </div></div>
       <div class="cam-overlay" id="cam-overlay" style="display:none;">
-        <div style="font-size:44px;">📷</div>
-        <div style="font-size:16px;font-weight:700;">Acesso à câmera</div>
-        <div id="cam-msg" style="font-size:13px;color:var(--text2);line-height:1.7;max-width:260px;"></div>
-        <button class="btn btn-primary" id="cam-btn" style="width:auto;padding:12px 28px;" onclick="requestCameraPermission()">Permitir câmera</button>
+        <div style="font-size:40px;">📷</div>
+        <div style="font-size:15px;font-weight:700;">Acesso à câmera</div>
+        <div id="cam-msg" style="font-size:13px;color:var(--text2);line-height:1.7;max-width:270px;"></div>
+        <button class="btn btn-primary" id="cam-btn" style="width:auto;padding:12px 24px;" onclick="requestCameraPermission()">Permitir câmera</button>
       </div>
     </div>
-    <div style="text-align:center;font-size:13px;color:var(--text2);margin-bottom:14px;">
-      ${isClosed ? '🔒 Pedido encerrado' : S.scanMode==='sale' ? 'Aponte para o código do produto' : '↩ Aponte para o item a devolver'}
+    <div style="text-align:center;font-size:13px;color:var(--text2);margin-bottom:12px;">
+      ${S.scanMode==='sale'?'Aponte para o código do produto':'↩ Aponte para o item a devolver'}
     </div>
+
+    <!-- Manual code entry -->
+    <div class="manual-bar">
+      <input class="form-input" id="manual-code" placeholder="Ou digite o código manualmente…" inputmode="numeric" autocomplete="off"/>
+      <button onclick="submitManualCode()">Buscar</button>
+    </div>
+
     ${itemsHtml}
     ${actionBtns}
     <div style="height:16px;"></div>
   `;
 
-  document.getElementById('header-sub').textContent =
-    client ? `Cliente: ${client.name}` : 'Selecione um cliente para iniciar';
+  document.getElementById('header-sub').textContent=
+    client?`Cliente: ${client.name}`:'Selecione um cliente para iniciar';
 
-  if (order && items.length) {
-    document.getElementById('total-slot').innerHTML =
+  // Enter key on manual input
+  document.getElementById('manual-code').addEventListener('keydown',e=>{
+    if(e.key==='Enter'){ e.preventDefault(); submitManualCode(); }
+  });
+
+  if(order&&items.length){
+    document.getElementById('total-slot').innerHTML=
       `<div class="total-bar"><span style="font-size:14px;color:var(--text2);">Total</span>
        <span style="font-size:22px;font-weight:800;color:var(--green);">${fmt(order.total)}</span></div>`;
   }
 
-  requestAnimationFrame(() => _startMainScan());
+  requestAnimationFrame(()=>_startMainScan());
 }
 
-function setScanMode(m) { S.scanMode=m; }
+function submitManualCode(){
+  const inp=document.getElementById('manual-code');
+  const code=(inp?.value||'').trim();
+  if(!code){ toast('Digite um código','err'); return; }
+  inp.value='';
+  handleCode(code);
+}
 
-function changeQty(code, delta) {
+function setScanMode(m){ S.scanMode=m; renderScan(); }
+
+function changeQty(code,delta){
   const order=S.orders[S.activeClient];
-  if (!order||!order.items[code]) return;
-  const item=order.items[code];
-  item.qty += delta;
-  order.total = Math.max(0, (order.total||0) + delta*item.price);
-  if (item.qty<=0) delete order.items[code];
+  if(!order||!order.items[code]) return;
+  order.items[code].qty+=delta;
+  order.total=Math.max(0,(order.total||0)+delta*order.items[code].price);
+  if(order.items[code].qty<=0) delete order.items[code];
   save(); renderScan();
 }
 
 // ══════════════════════════════════════════════════════════
-// SALE / RETURN LOGIC
+// SALE / RETURN
 // ══════════════════════════════════════════════════════════
-function handleSaleScan(code, product) {
-  const order = S.orders[S.activeClient];
-  if (order?.closed) { toast('Pedido encerrado — alterne para devolução ou selecione outro cliente', 'err'); return; }
-  if (!S.activeClient) { showSelectOrCreateClient(code,product); return; }
+function handleSaleScan(code,product){
+  if(!S.activeClient){ showSelectOrCreateClient(code,product); return; }
   addToOrder(code,product);
 }
-
-function handleReturnScan(code, product) {
-  if (!S.activeClient) { toast('Selecione um cliente', 'err'); return; }
+function handleReturnScan(code,product){
+  if(!S.activeClient){ toast('Selecione um cliente','err'); return; }
   const order=S.orders[S.activeClient];
-  if (!order||!order.items[code]||order.items[code].qty<=0) {
-    toast('Item não está no pedido deste cliente', 'err'); return;
+  if(!order||!order.items[code]||order.items[code].qty<=0){
+    toast('Item não está no pedido deste cliente','err'); return;
   }
   order.items[code].qty--;
-  order.total = Math.max(0, (order.total||0) - product.price);
-  if (order.items[code].qty===0) delete order.items[code];
-  save();
-  toast(`↩ Devolvido: ${product.name}`);
-  renderScan();
+  order.total=Math.max(0,(order.total||0)-product.price);
+  if(order.items[code].qty===0) delete order.items[code];
+  save(); toast(`↩ Devolvido: ${product.name}`); renderScan();
 }
-
-function addToOrder(code, product) {
-  if (!S.orders[S.activeClient])
-    S.orders[S.activeClient] = { clientId:S.activeClient, items:{}, total:0, closed:false };
+function addToOrder(code,product){
+  if(!S.orders[S.activeClient])
+    S.orders[S.activeClient]={clientId:S.activeClient,items:{},total:0};
   const order=S.orders[S.activeClient];
-  if (order.items[code]) order.items[code].qty++;
-  else order.items[code]={ code, name:product.name, price:product.price, qty:1 };
-  order.total = (order.total||0) + product.price;
+  if(order.items[code]) order.items[code].qty++;
+  else order.items[code]={code,name:product.name,price:product.price,qty:1};
+  order.total=(order.total||0)+product.price;
   save(); toast(`✓ ${product.name}`); renderScan();
 }
 
 // ══════════════════════════════════════════════════════════
 // CLOSE ORDER
 // ══════════════════════════════════════════════════════════
-function showCloseOrderModal() {
+function showCloseOrderModal(){
   const client=S.clients[S.activeClient];
   const order=S.orders[S.activeClient];
-  if (!order) return;
+  if(!order||!Object.keys(order.items).length) return;
   const items=Object.values(order.items);
   showModal(`
     <div class="modal-handle"></div>
@@ -632,56 +578,61 @@ function showCloseOrderModal() {
       </div>
     </div>
     <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:var(--radius-sm);padding:12px;font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6;">
-      ⚠️ Após fechar, <strong>não será possível</strong> adicionar ou remover itens. O pedido será registrado como pago.
+      ⚠️ Após fechar não será possível adicionar ou remover itens.
     </div>
     <button class="btn btn-green" style="margin-bottom:10px;" onclick="confirmCloseOrder('${S.activeClient}')">✅ Confirmar pagamento e encerrar</button>
     <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
   `);
 }
-
-function confirmCloseOrder(clientId) {
+function confirmCloseOrder(clientId){
   const client=S.clients[clientId];
   const order=S.orders[clientId];
-  if (!order) return;
-  // Move to closed history
-  const record = {
-    clientId, clientName:client.name, clientPhone:client.phone,
-    items:{...order.items}, total:order.total,
-    closedAt:new Date().toISOString()
-  };
-  S.closed.unshift(record);
+  if(!order) return;
+  S.closed.unshift({clientId,clientName:client.name,clientPhone:client.phone,
+    items:{...order.items},total:order.total,closedAt:new Date().toISOString()});
   delete S.orders[clientId];
-  if (S.activeClient===clientId) S.activeClient=null;
+  if(S.activeClient===clientId) S.activeClient=null;
   save(); closeModal();
-  toast(`✅ Pedido de ${client.name} encerrado e registrado!`);
-  renderOrders();
+  toast(`✅ Pedido de ${client.name} encerrado!`);
   showTab('orders');
 }
 
 // ══════════════════════════════════════════════════════════
 // CLIENT PICKER
 // ══════════════════════════════════════════════════════════
-function showClientPicker() {
+function showClientPicker(){
   const clients=Object.values(S.clients);
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title">Selecionar cliente</div>
-    <button class="btn btn-primary" style="margin-bottom:16px;" onclick="closeModal();showNewClientForm()">+ Novo Cliente</button>
-    ${clients.length ? clients.map(c=>{
-      const o=S.orders[c.id];
-      return `<div class="client-card" onclick="selectClient('${c.id}')">
-        <div class="avatar" style="width:44px;height:44px;font-size:16px;">${initials(c.name)}</div>
-        <div style="flex:1;"><div style="font-size:15px;font-weight:600;">${c.name}</div>
-        <div style="font-size:12px;color:var(--text2);">${c.phone}</div>
-        ${o&&Object.keys(o.items).length?`<div style="font-size:12px;color:var(--green);margin-top:2px;">${fmt(o.total)} em aberto</div>`:''}</div>
-        <div style="font-size:20px;color:var(--text2);">›</div>
-      </div>`;
-    }).join('') : `<div class="empty" style="padding:24px;"><p>Nenhum cliente cadastrado</p></div>`}
+    <button class="btn btn-primary" style="margin-bottom:12px;" onclick="closeModal();showNewClientForm()">+ Novo Cliente</button>
+    ${clients.length?`<div class="search-wrap"><span class="search-icon">🔍</span>
+      <input class="form-input" id="picker-search" placeholder="Buscar cliente…" oninput="filterPickerClients(this.value)"/></div>
+    <div id="picker-list">${renderClientPickerList(clients,'')}</div>`
+    :`<div class="empty" style="padding:24px;"><p>Nenhum cliente cadastrado</p></div>`}
   `);
 }
-function selectClient(id) { S.activeClient=id; S.scanMode='sale'; closeModal(); renderScan(); }
+function renderClientPickerList(clients,q){
+  const filtered=clients.filter(c=>c.name.toLowerCase().includes(q.toLowerCase())||c.phone.includes(q));
+  if(!filtered.length) return `<div style="text-align:center;padding:16px;color:var(--text2);font-size:14px;">Nenhum resultado</div>`;
+  return filtered.map(c=>{
+    const o=S.orders[c.id];
+    return `<div class="client-card" onclick="selectClient('${c.id}')">
+      <div class="avatar" style="width:44px;height:44px;font-size:16px;">${initials(c.name)}</div>
+      <div style="flex:1;"><div style="font-size:15px;font-weight:600;">${c.name}</div>
+      <div style="font-size:12px;color:var(--text2);">${c.phone}</div>
+      ${o&&Object.keys(o.items||{}).length?`<div style="font-size:12px;color:var(--green);margin-top:2px;">${fmt(o.total)} em aberto</div>`:''}</div>
+      <div style="font-size:20px;color:var(--text2);">›</div>
+    </div>`;
+  }).join('');
+}
+function filterPickerClients(q){
+  const list=document.getElementById('picker-list');
+  if(list) list.innerHTML=renderClientPickerList(Object.values(S.clients),q);
+}
+function selectClient(id){ S.activeClient=id; S.scanMode='sale'; closeModal(); renderScan(); }
 
-function showSelectOrCreateClient(code, product) {
+function showSelectOrCreateClient(code,product){
   const clients=Object.values(S.clients);
   showModal(`
     <div class="modal-handle"></div>
@@ -691,15 +642,15 @@ function showSelectOrCreateClient(code, product) {
       <div class="avatar" style="width:44px;height:44px;font-size:16px;">${initials(c.name)}</div>
       <div><div style="font-size:15px;font-weight:600;">${c.name}</div><div style="font-size:12px;color:var(--text2);">${c.phone}</div></div>
     </div>`).join('')}
-    <button class="btn btn-primary" style="margin-top:${clients.length?'8px':'0'};" onclick="closeModal();showNewClientFormThen('${code}')">+ Novo Cliente</button>
+    <button class="btn btn-primary" style="margin-top:8px;" onclick="closeModal();showNewClientFormThen('${code}')">+ Novo Cliente</button>
   `);
 }
-function selectClientAndAdd(clientId,code) { S.activeClient=clientId; closeModal(); addToOrder(code,S.products[code]); }
+function selectClientAndAdd(clientId,code){ S.activeClient=clientId; closeModal(); addToOrder(code,S.products[code]); }
 
 // ══════════════════════════════════════════════════════════
 // CLIENT FORMS
 // ══════════════════════════════════════════════════════════
-function showNewClientForm(redirect) {
+function showNewClientForm(redirect){
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title">Novo Cliente</div>
@@ -712,7 +663,7 @@ function showNewClientForm(redirect) {
   `);
   setTimeout(()=>document.getElementById('nc-name')?.focus(),100);
 }
-function showNewClientFormThen(code) {
+function showNewClientFormThen(code){
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title">Novo Cliente</div>
@@ -725,7 +676,7 @@ function showNewClientFormThen(code) {
   `);
   setTimeout(()=>document.getElementById('nc-name')?.focus(),100);
 }
-function saveNewClient(redirect) {
+function saveNewClient(redirect){
   const name=document.getElementById('nc-name').value.trim();
   const phone=document.getElementById('nc-phone').value.trim();
   if(!name||!phone){ toast('Preencha nome e telefone','err'); return; }
@@ -734,7 +685,7 @@ function saveNewClient(redirect) {
   save(); closeModal(); toast(`Cliente ${name} cadastrado!`);
   if(redirect) showTab(redirect); else renderScan();
 }
-function saveNewClientAndAdd(code) {
+function saveNewClientAndAdd(code){
   const name=document.getElementById('nc-name').value.trim();
   const phone=document.getElementById('nc-phone').value.trim();
   if(!name||!phone){ toast('Preencha nome e telefone','err'); return; }
@@ -744,12 +695,12 @@ function saveNewClientAndAdd(code) {
 }
 
 // ══════════════════════════════════════════════════════════
-// REGISTER PRODUCT (via scan)
+// REGISTER PRODUCT (via scan / manual)
 // ══════════════════════════════════════════════════════════
-function showRegisterProduct(code) {
+function showRegisterProduct(code){
   showModal(`
     <div class="modal-handle"></div>
-    <div class="modal-title">Produto novo</div>
+    <div class="modal-title">Produto não cadastrado</div>
     <div style="font-family:monospace;font-size:12px;background:var(--bg3);padding:8px 12px;border-radius:8px;margin-bottom:16px;color:var(--text2);">📷 ${code}</div>
     <div class="form-group"><label class="form-label">Descrição *</label><input class="form-input" id="rp-name" placeholder="Ex: Camisa Social Azul M"/></div>
     <div class="form-group"><label class="form-label">Valor (R$) *</label><input class="form-input" id="rp-price" type="number" step="0.01" placeholder="0,00" inputmode="decimal"/></div>
@@ -760,7 +711,7 @@ function showRegisterProduct(code) {
   `);
   setTimeout(()=>document.getElementById('rp-name')?.focus(),100);
 }
-function saveProduct(code) {
+function saveProduct(code){
   const name=document.getElementById('rp-name').value.trim();
   const price=parseFloat(document.getElementById('rp-price').value);
   if(!name||isNaN(price)||price<=0){ toast('Preencha todos os campos','err'); return; }
@@ -771,52 +722,85 @@ function saveProduct(code) {
 // ══════════════════════════════════════════════════════════
 // CLIENTS TAB
 // ══════════════════════════════════════════════════════════
-function renderClients() {
-  const clients=Object.values(S.clients);
+function renderClients(){
   document.getElementById('content').innerHTML=`
-    <button class="btn btn-primary" style="margin-bottom:16px;" onclick="showNewClientForm('clients')">+ Novo Cliente</button>
-    ${clients.length ? clients.map(c=>{
-      const o=S.orders[c.id];
-      const total=o?.total||0;
-      const count=o?Object.values(o.items).reduce((s,i)=>s+i.qty,0):0;
-      return `<div class="client-card" onclick="showClientDetail('${c.id}')">
-        <div class="avatar" style="width:44px;height:44px;font-size:16px;">${initials(c.name)}</div>
-        <div style="flex:1;"><div style="font-size:15px;font-weight:600;">${c.name}</div>
-        <div style="font-size:12px;color:var(--text2);">${c.phone}</div>
-        ${count>0?`<div style="font-size:12px;color:var(--green);margin-top:2px;">${count} item(s) · ${fmt(total)}</div>`:'<div style="font-size:11px;color:var(--text3);margin-top:2px;">Sem pedido aberto</div>'}</div>
-        <div style="font-size:20px;color:var(--text2);">›</div>
-      </div>`;
-    }).join('') : `<div class="empty"><div class="icon">👥</div><p>Nenhum cliente</p></div>`}
+    <button class="btn btn-primary" style="margin-bottom:12px;" onclick="showNewClientForm('clients')">+ Novo Cliente</button>
+    <div class="search-wrap"><span class="search-icon">🔍</span>
+      <input class="form-input" id="client-search" placeholder="Buscar por nome ou telefone…" oninput="filterClients(this.value)"/>
+    </div>
+    <div id="client-list"></div>
     <div style="height:12px;"></div>
   `;
+  filterClients('');
 }
-function showClientDetail(id) {
+function filterClients(q){
+  const list=document.getElementById('client-list'); if(!list) return;
+  const all=Object.values(S.clients);
+  const filtered=q?all.filter(c=>c.name.toLowerCase().includes(q.toLowerCase())||c.phone.includes(q)):all;
+  if(!filtered.length){ list.innerHTML=`<div class="empty"><div class="icon">👥</div><p>${q?'Nenhum resultado':'Nenhum cliente'}</p></div>`; return; }
+  list.innerHTML=filtered.map(c=>{
+    const o=S.orders[c.id];
+    const total=o?.total||0;
+    const count=o?Object.values(o.items||{}).reduce((s,i)=>s+i.qty,0):0;
+    return `<div class="client-card" onclick="showClientDetail('${c.id}')">
+      <div class="avatar" style="width:44px;height:44px;font-size:16px;">${initials(c.name)}</div>
+      <div style="flex:1;"><div style="font-size:15px;font-weight:600;">${c.name}</div>
+      <div style="font-size:12px;color:var(--text2);">${c.phone}</div>
+      ${count>0?`<div style="font-size:12px;color:var(--green);margin-top:2px;">${count} item(s) · ${fmt(total)}</div>`:''}</div>
+      <div style="font-size:20px;color:var(--text2);">›</div>
+    </div>`;
+  }).join('');
+}
+function showClientDetail(id){
   const client=S.clients[id];
   const order=S.orders[id];
-  const items=order?Object.values(order.items):[];
+  const items=order?Object.values(order.items||{}):[];
   showModal(`
     <div class="modal-handle"></div>
-    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
       <div class="avatar" style="width:52px;height:52px;font-size:20px;">${initials(client.name)}</div>
       <div><div class="modal-title" style="margin-bottom:2px;">${client.name}</div>
       <div style="font-size:14px;color:var(--text2);">📱 ${client.phone}</div></div>
     </div>
-    ${items.length?`<div class="card" style="margin-bottom:16px;">
+    <button class="btn btn-outline" style="margin-bottom:10px;" onclick="showEditClient('${id}')">✏️ Editar dados do cliente</button>
+    ${items.length?`<div class="card" style="margin-bottom:12px;">
       <div class="card-title">Pedido em aberto</div>
       ${items.map(i=>`<div class="item-row">
         <div class="item-info"><div class="item-name">${i.name}</div><div class="item-sub">Qtd: ${i.qty}</div></div>
         <div class="item-price">${fmt(i.price*i.qty)}</div>
       </div>`).join('')}
       <div class="divider"></div>
-      <div style="display:flex;justify-content:space-between;"><span style="font-weight:600;">Total</span><span style="color:var(--green);font-weight:700;">${fmt(order.total)}</span></div>
-    </div>`:`<div class="empty" style="padding:24px;"><p>Sem pedido aberto</p></div>`}
-    <button class="btn btn-primary" style="margin-bottom:10px;" onclick="S.activeClient='${id}';S.scanMode='sale';closeModal();showTab('scan')">🛒 Escanear / Adicionar itens</button>
+      <div style="display:flex;justify-content:space-between;"><span style="font-weight:600;">Total</span>
+      <span style="color:var(--green);font-weight:700;">${fmt(order.total)}</span></div>
+    </div>`:`<div style="padding:12px 0;text-align:center;color:var(--text2);font-size:14px;">Sem pedido em aberto</div>`}
+    <button class="btn btn-primary" style="margin-bottom:10px;" onclick="S.activeClient='${id}';S.scanMode='sale';closeModal();showTab('scan')">🛒 Adicionar itens</button>
     ${items.length?`<button class="btn btn-amber" style="margin-bottom:10px;" onclick="S.activeClient='${id}';S.scanMode='return';closeModal();showTab('scan')">↩ Registrar devolução</button>
     <button class="btn btn-green" style="margin-bottom:10px;" onclick="S.activeClient='${id}';closeModal();showCloseOrderModal()">✅ Fechar pedido / Registrar pagamento</button>`:''}
-    <button class="btn btn-red btn-sm" style="width:auto;margin:0 auto;" onclick="deleteClient('${id}')">🗑 Excluir cliente</button>
+    <button class="btn btn-red btn-sm" style="width:auto;margin:4px auto 0;" onclick="deleteClient('${id}')">🗑 Excluir cliente</button>
   `);
 }
-function deleteClient(id) {
+function showEditClient(id){
+  const c=S.clients[id];
+  showModal(`
+    <div class="modal-handle"></div>
+    <div class="modal-title">Editar Cliente</div>
+    <div class="form-group"><label class="form-label">Nome completo *</label><input class="form-input" id="ec-name" value="${c.name}"/></div>
+    <div class="form-group"><label class="form-label">Telefone *</label><input class="form-input" id="ec-phone" type="tel" value="${c.phone}"/></div>
+    <div class="row">
+      <div class="form-group"><button class="btn btn-outline" onclick="showClientDetail('${id}')">Cancelar</button></div>
+      <div class="form-group"><button class="btn btn-primary" onclick="updateClient('${id}')">Salvar</button></div>
+    </div>
+  `);
+  setTimeout(()=>document.getElementById('ec-name')?.focus(),100);
+}
+function updateClient(id){
+  const name=document.getElementById('ec-name').value.trim();
+  const phone=document.getElementById('ec-phone').value.trim();
+  if(!name||!phone){ toast('Preencha todos os campos','err'); return; }
+  S.clients[id]={...S.clients[id],name,phone};
+  save(); closeModal(); renderClients(); toast('Cliente atualizado!');
+}
+function deleteClient(id){
   if(!confirm('Excluir este cliente e seu pedido?')) return;
   delete S.clients[id]; delete S.orders[id];
   if(S.activeClient===id) S.activeClient=null;
@@ -826,34 +810,44 @@ function deleteClient(id) {
 // ══════════════════════════════════════════════════════════
 // PRODUCTS TAB
 // ══════════════════════════════════════════════════════════
-function renderProducts() {
-  const products=Object.values(S.products);
+function renderProducts(){
   document.getElementById('content').innerHTML=`
-    <button class="btn btn-primary" style="margin-bottom:16px;" onclick="showAddProductForm()">+ Cadastrar Produto</button>
-    ${products.length ? products.map(p=>`
-      <div class="item-row" style="padding:12px;background:var(--surface);border-radius:var(--radius-sm);border:1px solid var(--border);margin-bottom:8px;">
-        <div class="item-icon">📦</div>
-        <div class="item-info"><div class="item-name">${p.name}</div><div class="item-sub">${p.code}</div></div>
-        <div class="item-price">${fmt(p.price)}</div>
-        <button class="btn btn-sm btn-outline" onclick="editProduct('${p.code}')" style="margin-left:8px;">✏</button>
-      </div>`).join('') : `<div class="empty"><div class="icon">📦</div><p>Nenhum produto</p></div>`}
+    <button class="btn btn-primary" style="margin-bottom:12px;" onclick="showAddProductForm()">+ Cadastrar Produto</button>
+    <div class="search-wrap"><span class="search-icon">🔍</span>
+      <input class="form-input" id="product-search" placeholder="Buscar por nome ou código…" oninput="filterProducts(this.value)"/>
+    </div>
+    <div id="product-list"></div>
     <div style="height:12px;"></div>
   `;
+  filterProducts('');
 }
-function showAddProductForm() {
+function filterProducts(q){
+  const list=document.getElementById('product-list'); if(!list) return;
+  const all=Object.values(S.products);
+  const filtered=q?all.filter(p=>p.name.toLowerCase().includes(q.toLowerCase())||p.code.includes(q)):all;
+  if(!filtered.length){ list.innerHTML=`<div class="empty"><div class="icon">📦</div><p>${q?'Nenhum resultado':'Nenhum produto'}</p></div>`; return; }
+  list.innerHTML=filtered.map(p=>`
+    <div class="item-row" style="padding:12px;background:var(--surface);border-radius:var(--radius-sm);border:1px solid var(--border);margin-bottom:8px;">
+      <div class="item-icon">📦</div>
+      <div class="item-info"><div class="item-name">${p.name}</div><div class="item-sub">${p.code}</div></div>
+      <div class="item-price">${fmt(p.price)}</div>
+      <button class="btn btn-sm btn-outline" onclick="editProduct('${p.code}')" style="margin-left:8px;">✏</button>
+    </div>`).join('');
+}
+function showAddProductForm(){
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title">Cadastrar Produto</div>
     <div class="form-group">
       <label class="form-label">Código de barras / QR Code *</label>
       <div style="display:flex;gap:8px;align-items:center;">
-        <input class="form-input" id="mp-code" placeholder="Ex: 7891234567890" style="flex:1;"/>
+        <input class="form-input" id="mp-code" placeholder="Ex: 7891234567890" style="flex:1;" inputmode="numeric"/>
         <button class="scan-icon-btn" id="modal-scan-btn" onclick="toggleModalScan()" title="Escanear">📷</button>
       </div>
     </div>
     <div id="modal-scan-wrap" style="display:none;margin-bottom:14px;">
       <div class="scan-box" style="max-height:220px;">
-        <video id="modal-video" playsinline muted autoplay></video>
+        <video id="modal-video" playsinline webkit-playsinline muted autoplay></video>
         <div class="scan-overlay"><div class="scan-frame">
           <span class="sc tl"></span><span class="sc tr"></span>
           <span class="sc bl"></span><span class="sc br"></span>
@@ -869,7 +863,7 @@ function showAddProductForm() {
     </div>
   `);
 }
-function saveManualProduct() {
+function saveManualProduct(){
   const code=document.getElementById('mp-code').value.trim();
   const name=document.getElementById('mp-name').value.trim();
   const price=parseFloat(document.getElementById('mp-price').value);
@@ -877,7 +871,7 @@ function saveManualProduct() {
   S.products[code]={code,name,price};
   save(); closeModal(); renderProducts(); toast('Produto cadastrado!');
 }
-function editProduct(code) {
+function editProduct(code){
   const p=S.products[code];
   showModal(`
     <div class="modal-handle"></div>
@@ -891,14 +885,14 @@ function editProduct(code) {
     </div>
   `);
 }
-function updateProduct(code) {
+function updateProduct(code){
   const name=document.getElementById('ep-name').value.trim();
   const price=parseFloat(document.getElementById('ep-price').value);
   if(!name||isNaN(price)||price<=0){ toast('Preencha todos os campos','err'); return; }
   S.products[code]={code,name,price};
   save(); closeModal(); renderProducts(); toast('Produto atualizado!');
 }
-function deleteProduct(code) {
+function deleteProduct(code){
   delete S.products[code];
   save(); closeModal(); renderProducts(); toast('Produto excluído');
 }
@@ -906,11 +900,10 @@ function deleteProduct(code) {
 // ══════════════════════════════════════════════════════════
 // ORDERS TAB
 // ══════════════════════════════════════════════════════════
-function renderOrders() {
-  const open   = Object.values(S.orders).filter(o=>Object.keys(o.items||{}).length>0);
-  const closed = S.closed||[];
-
-  const openHtml = open.length ? open.map(o=>{
+function renderOrders(){
+  const open=Object.values(S.orders).filter(o=>Object.keys(o.items||{}).length>0);
+  const closed=S.closed||[];
+  const openHtml=open.length?open.map(o=>{
     const c=S.clients[o.clientId]; if(!c) return '';
     const count=Object.values(o.items).reduce((s,i)=>s+i.qty,0);
     return `<div class="card" style="cursor:pointer;" onclick="showOrderDetail('${o.clientId}')">
@@ -924,9 +917,9 @@ function renderOrders() {
         </div>
       </div>
     </div>`;
-  }).join('') : `<div class="empty" style="padding:28px;"><p>Nenhum pedido em aberto</p></div>`;
+  }).join(''):`<div class="empty" style="padding:28px;"><p>Nenhum pedido em aberto</p></div>`;
 
-  const closedHtml = closed.map((o,i)=>`
+  const closedHtml=closed.map((o,i)=>`
     <div class="card" style="cursor:pointer;opacity:.85;" onclick="showClosedDetail(${i})">
       <div style="display:flex;align-items:center;gap:12px;">
         <div class="avatar" style="width:44px;height:44px;font-size:16px;background:var(--bg3);color:var(--text2);">${initials(o.clientName)}</div>
@@ -940,18 +933,15 @@ function renderOrders() {
     </div>`).join('');
 
   document.getElementById('content').innerHTML=`
-    <div class="section-label">Em aberto</div>
-    ${openHtml}
+    <div class="section-label">Em aberto</div>${openHtml}
     ${closed.length?`<div class="section-label" style="margin-top:16px;">Histórico de pagamentos</div>${closedHtml}`:''}
     <div style="height:12px;"></div>
   `;
 }
-
-function showOrderDetail(clientId) {
+function showOrderDetail(clientId){
   const client=S.clients[clientId];
-  const order=S.orders[clientId];
-  if(!order) return;
-  const items=Object.values(order.items);
+  const order=S.orders[clientId]; if(!order) return;
+  const items=Object.values(order.items||{});
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title">${client.name}</div>
@@ -974,10 +964,9 @@ function showOrderDetail(clientId) {
     <button class="btn btn-outline" onclick="closeModal()">Fechar</button>
   `);
 }
-
-function showClosedDetail(idx) {
+function showClosedDetail(idx){
   const o=S.closed[idx]; if(!o) return;
-  const items=Object.values(o.items);
+  const items=Object.values(o.items||{});
   showModal(`
     <div class="modal-handle"></div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
@@ -1000,20 +989,17 @@ function showClosedDetail(idx) {
     <button class="btn btn-outline" onclick="closeModal()">Fechar</button>
   `);
 }
-function deleteClosedOrder(idx) {
-  S.closed.splice(idx,1); save(); closeModal(); renderOrders(); toast('Registro excluído');
-}
+function deleteClosedOrder(idx){ S.closed.splice(idx,1); save(); closeModal(); renderOrders(); toast('Registro excluído'); }
 
 // ══════════════════════════════════════════════════════════
 // SETTINGS TAB
 // ══════════════════════════════════════════════════════════
-function renderSettings() {
+function renderSettings(){
   const nP=Object.keys(S.products).length;
   const nC=Object.keys(S.clients).length;
   const nO=Object.values(S.orders).filter(o=>Object.keys(o.items||{}).length>0).length;
   const nCl=(S.closed||[]).length;
   const ghOk=S.ghToken&&S.ghRepo;
-
   document.getElementById('content').innerHTML=`
     <div class="card">
       <div class="card-title">Resumo</div>
@@ -1025,27 +1011,24 @@ function renderSettings() {
           </div>`).join('')}
       </div>
     </div>
-
     <div class="card">
       <div class="card-title">☁️ Sincronização GitHub</div>
-      <div style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.6;">
-        Salva os dados automaticamente em um arquivo <code style="background:var(--bg3);padding:1px 5px;border-radius:4px;">dados.json</code> no seu repositório do GitHub. Os dados ficam seguros mesmo trocando de celular.
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.6;">
+        Salva os dados automaticamente no arquivo <code style="background:var(--bg3);padding:1px 5px;border-radius:4px;">dados.json</code> do repositório.
         ${ghOk?`<br><br>✅ Conectado: <strong>${S.ghRepo}</strong>`:''}
-      </div>
+      </p>
       <button class="btn ${ghOk?'btn-outline':'btn-primary'}" style="margin-bottom:10px;" onclick="showGitHubSetup()">${ghOk?'⚙️ Alterar configuração':'🔗 Conectar ao GitHub'}</button>
-      ${ghOk?`<button class="btn btn-green" onclick="manualSync()">☁️ Sincronizar agora</button>`:''}
+      ${ghOk?`<button class="btn btn-green" onclick="syncGitHub(true)">☁️ Sincronizar agora</button>`:''}
     </div>
-
     <div class="card">
       <div class="card-title">💾 Backup local</div>
-      <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">Exporta todos os dados para um arquivo .json para guardar como cópia extra.</p>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">Exporta todos os dados para um arquivo .json.</p>
       <button class="btn btn-primary" style="margin-bottom:10px;" onclick="exportBackup()">⬇️ Exportar backup</button>
       <label style="display:block;width:100%;">
         <div class="btn btn-outline" style="cursor:pointer;">⬆️ Importar backup</div>
         <input type="file" accept=".json" onchange="importBackup(event)" style="display:none;"/>
       </label>
     </div>
-
     <div class="card">
       <div class="card-title" style="color:var(--red);">⚠️ Zona de perigo</div>
       <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">Apaga todos os dados permanentemente.</p>
@@ -1054,14 +1037,11 @@ function renderSettings() {
     <div style="height:12px;"></div>
   `;
 }
-
-// ── GitHub Setup ──
-function showGitHubSetup() {
+function showGitHubSetup(){
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title">🔗 Configurar GitHub</div>
-    <div class="modal-sub">Os dados serão salvos automaticamente no repositório configurado abaixo.</div>
-
+    <div class="modal-sub">Os dados serão salvos automaticamente no repositório.</div>
     <div class="form-group">
       <label class="form-label">Repositório (usuário/repo) *</label>
       <input class="form-input" id="gh-repo" placeholder="Ex: douglasmenegasso/consignado" value="${S.ghRepo}"/>
@@ -1069,8 +1049,8 @@ function showGitHubSetup() {
     <div class="form-group">
       <label class="form-label">Token de acesso pessoal (PAT) *</label>
       <input class="form-input" id="gh-token" type="password" placeholder="ghp_xxxxxxxxxxxx" value="${S.ghToken}"/>
-      <div style="font-size:11px;color:var(--text3);margin-top:6px;line-height:1.5;">
-        Gere em: github.com → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new token → marque <strong>repo</strong> → Generate
+      <div style="font-size:11px;color:var(--text3);margin-top:6px;line-height:1.6;">
+        Gere em: github.com → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate → marque <strong>repo</strong>
       </div>
     </div>
     <div class="row">
@@ -1079,33 +1059,21 @@ function showGitHubSetup() {
     </div>
   `);
 }
-
-async function saveGitHubConfig() {
+async function saveGitHubConfig(){
   const repo=document.getElementById('gh-repo').value.trim();
   const token=document.getElementById('gh-token').value.trim();
   if(!repo||!token){ toast('Preencha todos os campos','err'); return; }
   S.ghRepo=repo; S.ghToken=token;
-  saveLocal();
-  toast('Testando conexão…','info');
-  closeModal();
-  try {
-    // Test by loading (or creating) the file
-    const loaded = await ghLoad();
-    if (!loaded) await ghSave(); // create file if first time
-    toast('✅ GitHub conectado e sincronizado!','ok');
-  } catch(e) {
-    toast('Erro: ' + e.message,'err');
-  }
+  DB.save('csn_ghrepo',repo); DB.save('csn_ghtoken',token);
+  toast('Testando conexão…','info'); closeModal();
+  try{
+    const loaded=await ghLoad();
+    if(!loaded) await ghSave();
+    toast('✅ GitHub conectado!','ok');
+  }catch(e){ toast('Erro: '+e.message,'err'); }
   renderSettings();
 }
-
-async function manualSync() {
-  toast('Sincronizando…','info');
-  try { await ghSave(); toast('✅ Sincronizado!','ok'); } catch(e) { toast('Erro: '+e.message,'err'); }
-}
-
-// ── Backup local ──
-function exportBackup() {
+function exportBackup(){
   const data={version:1,exportedAt:new Date().toISOString(),products:S.products,clients:S.clients,orders:S.orders,closed:S.closed};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
@@ -1114,13 +1082,13 @@ function exportBackup() {
   document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
   toast('Backup exportado!');
 }
-function importBackup(event) {
+function importBackup(event){
   const file=event.target.files[0]; if(!file) return;
   const reader=new FileReader();
   reader.onload=(e)=>{
-    try {
+    try{
       const data=JSON.parse(e.target.result);
-      if(!data.products||!data.clients) { toast('Arquivo inválido','err'); return; }
+      if(!data.products||!data.clients){ toast('Arquivo inválido','err'); return; }
       showModal(`
         <div class="modal-handle"></div>
         <div class="modal-title">Confirmar importação</div>
@@ -1130,18 +1098,17 @@ function importBackup(event) {
           <div class="form-group"><button class="btn btn-primary" onclick='applyBackup(${JSON.stringify(JSON.stringify(data))})'>Importar</button></div>
         </div>
       `);
-    } catch(e){ toast('Erro ao ler arquivo','err'); }
+    }catch(e){ toast('Erro ao ler arquivo','err'); }
   };
   reader.readAsText(file);
 }
-function applyBackup(jsonStr) {
+function applyBackup(jsonStr){
   const data=JSON.parse(jsonStr);
   S.products=data.products; S.clients=data.clients;
-  S.orders=data.orders||{}; S.closed=data.closed||[];
-  S.activeClient=null;
+  S.orders=data.orders||{}; S.closed=data.closed||[]; S.activeClient=null;
   save(); closeModal(); toast('Backup importado!'); renderSettings();
 }
-function clearAll() {
+function clearAll(){
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title" style="color:var(--red);">Apagar tudo?</div>
@@ -1152,22 +1119,29 @@ function clearAll() {
     </div>
   `);
 }
-function confirmClearAll() {
+function confirmClearAll(){
   S.products={}; S.clients={}; S.orders={}; S.closed=[]; S.activeClient=null;
   save(); closeModal(); toast('Dados apagados'); renderSettings();
 }
 
 // ══════════════════════════════════════════════════════════
-// INIT
+// INIT — load ZXing then start
 // ══════════════════════════════════════════════════════════
-async function init() {
-  // Try to load from GitHub on startup
-  if (S.ghToken && S.ghRepo) {
-    try { await ghLoad(); } catch(e) { console.warn('GH load failed', e); }
+async function init(){
+  if(S.ghToken&&S.ghRepo){
+    try{ await ghLoad(); }catch(e){ console.warn('GH load:',e); }
   }
   showTab('scan');
 }
-init();
+
+// Load ZXing dynamically then init
+(function loadZXing(){
+  const s=document.createElement('script');
+  s.src='https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js';
+  s.onload=()=>init();
+  s.onerror=()=>{ console.error('ZXing failed to load'); init(); };
+  document.head.appendChild(s);
+})();
 </script>
 </body>
 </html>
