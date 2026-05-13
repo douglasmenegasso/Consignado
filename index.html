@@ -47,12 +47,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .search-wrap{position:relative;margin-bottom:14px;}
 .search-wrap .form-input{padding-left:40px;}
 .search-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none;}
-/* Scanner */
-.scan-box{position:relative;border-radius:var(--radius);overflow:hidden;background:#000;aspect-ratio:4/3;margin-bottom:4px;}
+.scan-box{position:relative;border-radius:var(--radius);overflow:hidden;background:#000;aspect-ratio:3/4;margin-bottom:4px;}
 .scan-box video{width:100%;height:100%;object-fit:cover;display:block;}
 .scan-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;}
-.scan-frame{width:58%;height:58%;position:relative;}
-.sc{position:absolute;width:22px;height:22px;border-color:var(--accent2);border-style:solid;}
+.scan-frame{width:65%;height:45%;position:relative;}
+.sc{position:absolute;width:24px;height:24px;border-color:var(--accent2);border-style:solid;}
 .sc.tl{top:0;left:0;border-width:3px 0 0 3px;border-radius:4px 0 0 0;}
 .sc.tr{top:0;right:0;border-width:3px 3px 0 0;border-radius:0 4px 0 0;}
 .sc.bl{bottom:0;left:0;border-width:0 0 3px 3px;border-radius:0 0 0 4px;}
@@ -60,11 +59,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .scan-line{position:absolute;width:100%;height:2px;background:linear-gradient(90deg,transparent,var(--accent2),transparent);animation:scanline 2s linear infinite;}
 @keyframes scanline{0%{top:0}100%{top:100%}}
 .cam-overlay{position:absolute;inset:0;background:rgba(15,15,18,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;text-align:center;border-radius:var(--radius);}
-/* Manual */
 .manual-bar{display:flex;gap:8px;margin-bottom:14px;}
-.manual-bar .form-input{flex:1;padding:12px 14px;font-size:15px;}
+.manual-bar .form-input{flex:1;}
 .manual-bar button{flex-shrink:0;padding:0 18px;height:46px;border-radius:var(--radius-sm);border:none;background:var(--accent);color:#fff;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;}
-/* Items */
 .item-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
 .item-row:last-child{border-bottom:none;}
 .item-icon{width:38px;height:38px;border-radius:var(--radius-sm);background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
@@ -102,14 +99,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.4px;}
 .badge-amber{background:rgba(245,158,11,.15);color:var(--amber);}
 .badge-green{background:rgba(34,197,94,.15);color:var(--green);}
-.scan-icon-btn{flex-shrink:0;width:44px;height:44px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.scan-icon-btn{flex-shrink:0;width:44px;height:44px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .section-label{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;}
 ::-webkit-scrollbar{width:4px;}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
-/* Quagga viewport override */
-#quagga-viewport, #modal-quagga-viewport{position:absolute;inset:0;overflow:hidden;}
-#quagga-viewport video, #modal-quagga-viewport video{width:100%!important;height:100%!important;object-fit:cover!important;}
-#quagga-viewport canvas, #modal-quagga-viewport canvas{display:none!important;}
 </style>
 </head>
 <body>
@@ -130,6 +123,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 </div>
 <div id="modal-root"></div>
 <div id="toast-root"></div>
+<canvas id="decode-canvas" style="display:none;"></canvas>
 
 <script>
 // ══════════════════════════════════════════════════════════
@@ -140,12 +134,12 @@ const DB={
   save(k,v){localStorage.setItem(k,JSON.stringify(v));}
 };
 let S={
-  products: DB.load('csn_products',{}),
-  clients:  DB.load('csn_clients', {}),
-  orders:   DB.load('csn_orders',  {}),
-  closed:   DB.load('csn_closed',  []),
-  ghToken:  DB.load('csn_ghtoken', ''),
-  ghRepo:   DB.load('csn_ghrepo',  ''),
+  products:DB.load('csn_products',{}),
+  clients: DB.load('csn_clients', {}),
+  orders:  DB.load('csn_orders',  {}),
+  closed:  DB.load('csn_closed',  []),
+  ghToken: DB.load('csn_ghtoken', ''),
+  ghRepo:  DB.load('csn_ghrepo',  ''),
   activeClient:null, scanMode:'sale', tab:'scan'
 };
 function saveLocal(){
@@ -208,150 +202,218 @@ function showModal(html){
   document.getElementById('modal-root').innerHTML=
     `<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">${html}</div></div>`;
 }
-function closeModal(){stopModalScanner(); document.getElementById('modal-root').innerHTML='';}
+function closeModal(){_stopScan(); document.getElementById('modal-root').innerHTML='';}
 
 // ══════════════════════════════════════════════════════════
-// SCANNER — Quagga2 (works on iOS Safari)
+// SCANNER — ZXing with correct iOS portrait handling
 // ══════════════════════════════════════════════════════════
-let _scannerRunning=false;
-let _modalScannerRunning=false;
+let _stream=null, _running=false, _rafId=null, _zxReader=null;
+let _scanCallback=null, _scanTarget=null;
 
-const QUAGGA_CONFIG=(containerId)=>({
-  inputStream:{
-    type:'LiveStream',
-    target:document.getElementById(containerId),
-    constraints:{
-      width:{min:320,ideal:1280},
-      height:{min:240,ideal:720},
-      facingMode:'environment',
-      aspectRatio:{min:1,max:2}
-    },
-    area:{top:'20%',right:'10%',left:'10%',bottom:'20%'}
-  },
-  locator:{patchSize:'medium',halfSample:true},
-  numOfWorkers:0,
-  frequency:5,
-  decoder:{
-    readers:[
-      'ean_reader','ean_8_reader','code_128_reader',
-      'code_39_reader','upc_reader','upc_e_reader',
-      'codabar_reader','i2of5_reader','qr_code_reader'
-    ]
-  },
-  locate:true
-});
+function _getReader(){
+  if(!_zxReader){
+    const hints=new Map();
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[
+      ZXing.BarcodeFormat.QR_CODE,
+      ZXing.BarcodeFormat.EAN_13,
+      ZXing.BarcodeFormat.EAN_8,
+      ZXing.BarcodeFormat.CODE_128,
+      ZXing.BarcodeFormat.CODE_39,
+      ZXing.BarcodeFormat.UPC_A,
+      ZXing.BarcodeFormat.UPC_E,
+      ZXing.BarcodeFormat.ITF,
+      ZXing.BarcodeFormat.DATA_MATRIX,
+      ZXing.BarcodeFormat.AZTEC,
+      ZXing.BarcodeFormat.PDF_417,
+      ZXing.BarcodeFormat.CODABAR,
+    ]);
+    hints.set(ZXing.DecodeHintType.TRY_HARDER,true);
+    _zxReader=new ZXing.MultiFormatReader();
+    _zxReader.setHints(hints);
+  }
+  return _zxReader;
+}
 
-function startMainScanner(){
-  if(_scannerRunning) return;
-  const el=document.getElementById('quagga-viewport');
-  if(!el) return;
-  _scannerRunning=true;
-  Quagga.init(QUAGGA_CONFIG('quagga-viewport'),(err)=>{
-    if(err){
-      _scannerRunning=false;
-      const denied=err.name==='NotAllowedError'||err.name==='SecurityError'||(err.message&&err.message.includes('Permission'));
-      showCamOverlay(
-        denied
-          ? '🍎 <b>iPhone:</b> Ajustes → Safari → Câmera → Permitir<br><br>Ou use a entrada manual abaixo.'
-          : 'Câmera não disponível.<br>Use a entrada manual de código abaixo.<br><small style="color:var(--text3)">'+err.message+'</small>',
-        denied
-      );
-      return;
+async function _stopScan(){
+  _running=false;
+  _scanCallback=null;
+  _scanTarget=null;
+  if(_rafId){cancelAnimationFrame(_rafId);_rafId=null;}
+  if(_stream){_stream.getTracks().forEach(t=>t.stop());_stream=null;}
+  await new Promise(r=>setTimeout(r,150));
+}
+
+async function _startScan(videoEl, onCode){
+  await _stopScan();
+  if(!videoEl) return;
+  _scanCallback=onCode;
+  _scanTarget=videoEl;
+
+  try{
+    // iOS Safari requires exact environment first, fallback to environment
+    try{
+      _stream=await navigator.mediaDevices.getUserMedia({
+        video:{facingMode:{exact:'environment'}}
+      });
+    }catch(e){
+      _stream=await navigator.mediaDevices.getUserMedia({
+        video:{facingMode:'environment'}
+      });
     }
-    Quagga.start();
-    hideCamOverlay();
-  });
 
-  let _last='',_lastT=0;
-  Quagga.onDetected((result)=>{
-    const code=result&&result.codeResult&&result.codeResult.code;
-    if(!code) return;
-    const now=Date.now();
-    if(code===_last&&now-_lastT<2500) return;
-    _last=code; _lastT=now;
-    handleCode(code);
-  });
-}
+    videoEl.setAttribute('playsinline','');
+    videoEl.setAttribute('webkit-playsinline','');
+    videoEl.setAttribute('muted','');
+    videoEl.muted=true;
+    videoEl.autoplay=true;
+    videoEl.srcObject=_stream;
 
-function stopMainScanner(){
-  if(!_scannerRunning) return;
-  try{Quagga.stop();}catch(e){}
-  _scannerRunning=false;
-  // Clear any lingering Quagga event listeners
-  try{Quagga.offDetected();}catch(e){}
-}
+    // Wait for canplay — most reliable on iOS
+    await new Promise((res,rej)=>{
+      const tid=setTimeout(()=>rej(new Error('Camera timeout')),10000);
+      const go=()=>{clearTimeout(tid); videoEl.play().then(res).catch(rej);};
+      videoEl.readyState>=3 ? go() : videoEl.addEventListener('canplay',go,{once:true});
+    });
 
-function startModalScanner(){
-  if(_modalScannerRunning) return;
-  const el=document.getElementById('modal-quagga-viewport');
-  if(!el) return;
-  _modalScannerRunning=true;
+    // Extra wait for iOS camera to stabilise and auto-focus
+    await new Promise(r=>setTimeout(r,1200));
 
-  const cfg={...QUAGGA_CONFIG('modal-quagga-viewport')};
-  Quagga.init(cfg,(err)=>{
-    if(err){
-      _modalScannerRunning=false;
-      const b=document.getElementById('modal-scan-btn');
-      if(b){b.textContent='📷';b.disabled=false;b.style.background='var(--bg3)';}
-      toast('Câmera não disponível','err');
-      return;
-    }
-    Quagga.start();
-    const b=document.getElementById('modal-scan-btn');
-    if(b){b.textContent='⏹ Parar';b.disabled=false;}
-  });
+    _running=true;
+    const canvas=document.getElementById('decode-canvas');
+    const ctx=canvas.getContext('2d',{willReadFrequently:true});
+    const reader=_getReader();
+    let last='',lastT=0,tick=0;
 
-  let _last='',_lastT=0;
-  Quagga.onDetected((result)=>{
-    const code=result&&result.codeResult&&result.codeResult.code;
-    if(!code) return;
-    const now=Date.now();
-    if(code===_last&&now-_lastT<2500) return;
-    _last=code; _lastT=now;
-    stopModalScanner();
-    const inp=document.getElementById('mp-code');
-    const wrap=document.getElementById('modal-scan-wrap');
-    const btn=document.getElementById('modal-scan-btn');
-    if(inp) inp.value=code;
-    if(wrap) wrap.style.display='none';
-    if(btn){btn.style.background='var(--green)';btn.style.borderColor='var(--green)';btn.textContent='✓';}
-    toast('Código lido!');
-    setTimeout(()=>document.getElementById('mp-name')?.focus(),150);
-  });
-}
+    const loop=()=>{
+      if(!_running) return;
+      tick++;
 
-function stopModalScanner(){
-  if(!_modalScannerRunning) return;
-  try{Quagga.stop();}catch(e){}
-  _modalScannerRunning=false;
-  try{Quagga.offDetected();}catch(e){}
-}
+      // Decode every 3rd frame — balance between speed and CPU
+      if(tick%3===0 && videoEl.readyState>=2 && videoEl.videoWidth>0){
+        try{
+          const vw=videoEl.videoWidth;
+          const vh=videoEl.videoHeight;
 
-function toggleModalScan(){
-  if(_modalScannerRunning){
-    stopModalScanner();
-    const wrap=document.getElementById('modal-scan-wrap');
-    const btn=document.getElementById('modal-scan-btn');
-    if(wrap) wrap.style.display='none';
-    if(btn){btn.style.background='var(--bg3)';btn.style.borderColor='var(--border)';btn.textContent='📷';}
-  } else {
-    const wrap=document.getElementById('modal-scan-wrap');
-    const btn=document.getElementById('modal-scan-btn');
-    if(wrap) wrap.style.display='block';
-    if(btn){btn.style.background='var(--accent)';btn.style.borderColor='var(--accent)';btn.textContent='⏳';btn.disabled=true;}
-    // Give DOM time to render the viewport
-    setTimeout(()=>startModalScanner(), 300);
+          // Use actual video size — do NOT rescale, iOS gives 480x640
+          canvas.width=vw;
+          canvas.height=vh;
+          ctx.drawImage(videoEl,0,0,vw,vh);
+
+          const imageData=ctx.getImageData(0,0,vw,vh);
+          const rgba=imageData.data;
+
+          // Build RGB array (ZXing needs 3 bytes per pixel, not 4)
+          const rgb=new Uint8ClampedArray(vw*vh*3);
+          for(let i=0,j=0;i<rgba.length;i+=4,j+=3){
+            rgb[j]=rgba[i]; rgb[j+1]=rgba[i+1]; rgb[j+2]=rgba[i+2];
+          }
+
+          const lum=new ZXing.RGBLuminanceSource(rgb,vw,vh);
+          const bmp=new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
+
+          try{
+            const result=reader.decode(bmp);
+            if(result){
+              const code=result.getText();
+              const now=Date.now();
+              if(code!==last || now-lastT>2500){
+                last=code; lastT=now;
+                if(_scanCallback) _scanCallback(code);
+              }
+            }
+          }catch(e){/* NotFoundException — no barcode in frame, normal */}
+
+        }catch(e){/* drawImage or getImageData error */}
+      }
+
+      if(_running) _rafId=requestAnimationFrame(loop);
+    };
+
+    _rafId=requestAnimationFrame(loop);
+
+  }catch(err){
+    _running=false;
+    const denied=err.name==='NotAllowedError'||err.name==='SecurityError';
+    _showCamOverlay(
+      denied
+        ? '🍎 <b>iPhone:</b> Ajustes → Safari → Câmera → Permitir<br><br>Ou use a entrada manual abaixo.'
+        : 'Câmera não disponível.<br>Use a entrada manual de código abaixo.',
+      denied
+    );
   }
 }
 
-function showCamOverlay(msg,showBtn=true){
+function _showCamOverlay(msg,showBtn=true){
   const o=document.getElementById('cam-overlay'); if(!o) return;
   o.style.display='flex';
   const m=document.getElementById('cam-msg'); if(m) m.innerHTML=msg;
   const b=document.getElementById('cam-btn'); if(b) b.style.display=showBtn?'flex':'none';
 }
-function hideCamOverlay(){const o=document.getElementById('cam-overlay'); if(o) o.style.display='none';}
-function requestCameraPermission(){hideCamOverlay(); startMainScanner();}
+function _hideCamOverlay(){const o=document.getElementById('cam-overlay');if(o) o.style.display='none';}
+
+function requestCameraPermission(){
+  _hideCamOverlay();
+  const v=document.getElementById('main-video');
+  if(v) _startScan(v, _onMainCode);
+}
+
+function startMainScan(){
+  if(location.protocol==='file:'){
+    _showCamOverlay('Abra via HTTPS (GitHub Pages) para usar a câmera.<br>Use a entrada manual abaixo.',false);
+    return;
+  }
+  const v=document.getElementById('main-video');
+  if(!v) return;
+  _startScan(v, _onMainCode);
+}
+
+function stopMainScan(){ _stopScan(); }
+
+let _mainLast='',_mainLastT=0;
+function _onMainCode(code){
+  const now=Date.now();
+  if(code===_mainLast&&now-_mainLastT<2000) return;
+  _mainLast=code; _mainLastT=now;
+  handleCode(code);
+}
+
+// Modal scanner for product registration
+let _modalScanOn=false;
+function toggleModalScan(){
+  if(_modalScanOn){
+    _modalScanOn=false;
+    _stopScan();
+    const wrap=document.getElementById('modal-scan-wrap');
+    const btn=document.getElementById('modal-scan-btn');
+    if(wrap) wrap.style.display='none';
+    if(btn){btn.style.background='var(--bg3)';btn.style.borderColor='var(--border)';btn.textContent='📷';}
+  }else{
+    _modalScanOn=true;
+    const wrap=document.getElementById('modal-scan-wrap');
+    const btn=document.getElementById('modal-scan-btn');
+    if(wrap) wrap.style.display='block';
+    if(btn){btn.style.background='var(--accent)';btn.style.borderColor='var(--accent)';btn.textContent='⏳';btn.disabled=true;}
+    setTimeout(()=>{
+      if(!_modalScanOn) return;
+      const b=document.getElementById('modal-scan-btn');
+      if(b){b.textContent='📷';b.disabled=false;}
+      const v=document.getElementById('modal-video');
+      if(!v) return;
+      _startScan(v,(code)=>{
+        _modalScanOn=false;
+        _stopScan();
+        const inp=document.getElementById('mp-code');
+        const w=document.getElementById('modal-scan-wrap');
+        const b=document.getElementById('modal-scan-btn');
+        if(inp) inp.value=code;
+        if(w)   w.style.display='none';
+        if(b)   {b.style.background='var(--green)';b.style.borderColor='var(--green)';b.textContent='✓';b.disabled=false;}
+        toast('Código lido!');
+        setTimeout(()=>document.getElementById('mp-name')?.focus(),150);
+      });
+    },400);
+  }
+}
 
 // ══════════════════════════════════════════════════════════
 // TABS
@@ -360,7 +422,7 @@ function showTab(tab){
   S.tab=tab;
   ['scan','clients','products','orders','settings'].forEach(t=>
     document.getElementById('nav-'+t).classList.toggle('active',t===tab));
-  stopMainScanner();
+  stopMainScan();
   document.getElementById('total-slot').innerHTML='';
   if     (tab==='scan')     renderScan();
   else if(tab==='clients')  renderClients();
@@ -407,7 +469,7 @@ function renderScan(){
       <button class="mode-opt ${S.scanMode==='return'?'active':''}" onclick="setScanMode('return')">↩ Devolução</button>
     </div>
     <div class="scan-box">
-      <div id="quagga-viewport" style="position:absolute;inset:0;"></div>
+      <video id="main-video" playsinline webkit-playsinline muted autoplay></video>
       <div class="scan-overlay"><div class="scan-frame">
         <span class="sc tl"></span><span class="sc tr"></span>
         <span class="sc bl"></span><span class="sc br"></span>
@@ -445,7 +507,7 @@ function renderScan(){
        <span style="font-size:22px;font-weight:800;color:var(--green);">${fmt(order.total)}</span></div>`;
   }
 
-  requestAnimationFrame(()=>startMainScanner());
+  requestAnimationFrame(()=>startMainScan());
 }
 
 function submitManualCode(){
@@ -549,7 +611,7 @@ function showClientPicker(){
     <div class="modal-title">Selecionar cliente</div>
     <button class="btn btn-primary" style="margin-bottom:12px;" onclick="closeModal();showNewClientForm()">+ Novo Cliente</button>
     ${clients.length?`<div class="search-wrap"><span class="search-icon">🔍</span>
-      <input class="form-input" id="picker-search" placeholder="Buscar cliente…" oninput="filterPickerClients(this.value)"/></div>
+      <input class="form-input" id="picker-search" placeholder="Buscar…" oninput="filterPickerClients(this.value)"/></div>
     <div id="picker-list">${renderPickerList(clients,'')}</div>`
     :`<div class="empty" style="padding:24px;"><p>Nenhum cliente</p></div>`}
   `);
@@ -573,7 +635,6 @@ function filterPickerClients(q){
   if(l) l.innerHTML=renderPickerList(Object.values(S.clients),q);
 }
 function selectClient(id){S.activeClient=id;S.scanMode='sale';closeModal();renderScan();}
-
 function showSelectOrCreateClient(code,product){
   const clients=Object.values(S.clients);
   showModal(`
@@ -593,46 +654,41 @@ function selectClientAndAdd(clientId,code){S.activeClient=clientId;closeModal();
 // ══════════════════════════════════════════════════════════
 // CLIENT FORMS
 // ══════════════════════════════════════════════════════════
-function _clientFormModal(title, nameDef, phoneDef, saveFn){
+function _clientFormModal(title,nameDef,phoneDef,btns){
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title">${title}</div>
-    <div class="form-group">
-      <label class="form-label">Nome *</label>
-      <input class="form-input" id="cf-name" placeholder="Ex: Maria Silva" value="${nameDef}"/>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Telefone <span style="color:var(--text3);font-size:11px;">(opcional)</span></label>
+    <div class="form-group"><label class="form-label">Nome *</label>
+      <input class="form-input" id="cf-name" placeholder="Ex: Maria Silva" value="${nameDef}"/></div>
+    <div class="form-group"><label class="form-label">Telefone <span style="color:var(--text3);font-size:11px;">(opcional)</span></label>
       <input class="form-input" id="cf-phone" type="tel" placeholder="Ex: 41999990000" value="${phoneDef}"/>
-      <div class="form-hint">Usado como código do cliente. Pode deixar em branco.</div>
-    </div>
-    ${saveFn}
+      <div class="form-hint">Pode deixar em branco</div></div>
+    ${btns}
   `);
   setTimeout(()=>document.getElementById('cf-name')?.focus(),100);
+}
+function _readCF(){
+  return{
+    name:(document.getElementById('cf-name')?.value||'').trim(),
+    phone:(document.getElementById('cf-phone')?.value||'').trim()
+  };
 }
 function showNewClientForm(redirect){
   _clientFormModal('Novo Cliente','','',`
     <div class="row">
       <div class="form-group"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button></div>
       <div class="form-group"><button class="btn btn-primary" onclick="saveNewClient('${redirect||''}')">Salvar</button></div>
-    </div>
-  `);
+    </div>`);
 }
 function showNewClientFormThen(code){
   _clientFormModal('Novo Cliente','','',`
     <div class="row">
       <div class="form-group"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button></div>
       <div class="form-group"><button class="btn btn-primary" onclick="saveNewClientAndAdd('${code}')">Salvar e Adicionar</button></div>
-    </div>
-  `);
-}
-function _readClientForm(){
-  const name=(document.getElementById('cf-name')?.value||'').trim();
-  const phone=(document.getElementById('cf-phone')?.value||'').trim();
-  return {name,phone};
+    </div>`);
 }
 function saveNewClient(redirect){
-  const {name,phone}=_readClientForm();
+  const{name,phone}=_readCF();
   if(!name){toast('Preencha o nome','err');return;}
   const id=phone?phone.replace(/\D/g,''):'c_'+Date.now();
   S.clients[id]={id,name,phone};
@@ -640,7 +696,7 @@ function saveNewClient(redirect){
   if(redirect) showTab(redirect); else renderScan();
 }
 function saveNewClientAndAdd(code){
-  const {name,phone}=_readClientForm();
+  const{name,phone}=_readCF();
   if(!name){toast('Preencha o nome','err');return;}
   const id=phone?phone.replace(/\D/g,''):'c_'+Date.now();
   S.clients[id]={id,name,phone}; S.activeClient=id;
@@ -652,11 +708,10 @@ function showEditClient(id){
     <div class="row">
       <div class="form-group"><button class="btn btn-outline" onclick="showClientDetail('${id}')">Cancelar</button></div>
       <div class="form-group"><button class="btn btn-primary" onclick="updateClient('${id}')">Salvar</button></div>
-    </div>
-  `);
+    </div>`);
 }
 function updateClient(id){
-  const {name,phone}=_readClientForm();
+  const{name,phone}=_readCF();
   if(!name){toast('Preencha o nome','err');return;}
   S.clients[id]={...S.clients[id],name,phone};
   save(); closeModal(); renderClients(); toast('Cliente atualizado!');
@@ -675,10 +730,8 @@ function renderClients(){
   document.getElementById('content').innerHTML=`
     <button class="btn btn-primary" style="margin-bottom:12px;" onclick="showNewClientForm('clients')">+ Novo Cliente</button>
     <div class="search-wrap"><span class="search-icon">🔍</span>
-      <input class="form-input" id="client-search" placeholder="Buscar por nome ou telefone…" oninput="filterClients(this.value)"/>
-    </div>
-    <div id="client-list"></div><div style="height:12px;"></div>
-  `;
+      <input class="form-input" id="client-search" placeholder="Buscar por nome ou telefone…" oninput="filterClients(this.value)"/></div>
+    <div id="client-list"></div><div style="height:12px;"></div>`;
   filterClients('');
 }
 function filterClients(q){
@@ -699,8 +752,7 @@ function filterClients(q){
   }).join('');
 }
 function showClientDetail(id){
-  const c=S.clients[id];
-  const order=S.orders[id];
+  const c=S.clients[id]; const order=S.orders[id];
   const items=order?Object.values(order.items||{}):[];
   showModal(`
     <div class="modal-handle"></div>
@@ -721,7 +773,7 @@ function showClientDetail(id){
         <span style="font-weight:600;">Total</span>
         <span style="color:var(--green);font-weight:700;">${fmt(order.total)}</span>
       </div>
-    </div>`:`<div style="padding:12px 0;text-align:center;color:var(--text2);font-size:14px;">Sem pedido em aberto</div>`}
+    </div>`:`<div style="padding:12px 0;text-align:center;color:var(--text2);font-size:14px;margin-bottom:12px;">Sem pedido em aberto</div>`}
     <button class="btn btn-primary" style="margin-bottom:10px;" onclick="S.activeClient='${id}';S.scanMode='sale';closeModal();showTab('scan')">🛒 Adicionar itens</button>
     ${items.length?`<button class="btn btn-amber" style="margin-bottom:10px;" onclick="S.activeClient='${id}';S.scanMode='return';closeModal();showTab('scan')">↩ Registrar devolução</button>
     <button class="btn btn-green" style="margin-bottom:10px;" onclick="S.activeClient='${id}';closeModal();showCloseOrderModal()">✅ Fechar pedido / Registrar pagamento</button>`:''}
@@ -736,10 +788,8 @@ function renderProducts(){
   document.getElementById('content').innerHTML=`
     <button class="btn btn-primary" style="margin-bottom:12px;" onclick="showAddProductForm()">+ Cadastrar Produto</button>
     <div class="search-wrap"><span class="search-icon">🔍</span>
-      <input class="form-input" id="product-search" placeholder="Buscar por nome ou código…" oninput="filterProducts(this.value)"/>
-    </div>
-    <div id="product-list"></div><div style="height:12px;"></div>
-  `;
+      <input class="form-input" id="product-search" placeholder="Buscar por nome ou código…" oninput="filterProducts(this.value)"/></div>
+    <div id="product-list"></div><div style="height:12px;"></div>`;
   filterProducts('');
 }
 function filterProducts(q){
@@ -767,8 +817,8 @@ function showAddProductForm(){
       </div>
     </div>
     <div id="modal-scan-wrap" style="display:none;margin-bottom:14px;">
-      <div class="scan-box" style="max-height:220px;">
-        <div id="modal-quagga-viewport" style="position:absolute;inset:0;"></div>
+      <div class="scan-box" style="aspect-ratio:3/4;max-height:260px;">
+        <video id="modal-video" playsinline webkit-playsinline muted autoplay></video>
         <div class="scan-overlay"><div class="scan-frame">
           <span class="sc tl"></span><span class="sc tr"></span>
           <span class="sc bl"></span><span class="sc br"></span>
@@ -776,8 +826,10 @@ function showAddProductForm(){
       </div>
       <div style="text-align:center;font-size:13px;color:var(--text2);margin-top:8px;">Aponte para o código</div>
     </div>
-    <div class="form-group"><label class="form-label">Descrição *</label><input class="form-input" id="mp-name" placeholder="Ex: Camisa Polo Azul M"/></div>
-    <div class="form-group"><label class="form-label">Valor (R$) *</label><input class="form-input" id="mp-price" type="number" step="0.01" placeholder="0,00" inputmode="decimal"/></div>
+    <div class="form-group"><label class="form-label">Descrição *</label>
+      <input class="form-input" id="mp-name" placeholder="Ex: Camisa Polo Azul M"/></div>
+    <div class="form-group"><label class="form-label">Valor (R$) *</label>
+      <input class="form-input" id="mp-price" type="number" step="0.01" placeholder="0,00" inputmode="decimal"/></div>
     <div class="row">
       <div class="form-group"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button></div>
       <div class="form-group"><button class="btn btn-primary" onclick="saveManualProduct()">Salvar</button></div>
@@ -798,8 +850,10 @@ function editProduct(code){
     <div class="modal-handle"></div>
     <div class="modal-title">Editar Produto</div>
     <div style="font-family:monospace;font-size:12px;background:var(--bg3);padding:8px 12px;border-radius:8px;margin-bottom:16px;">${code}</div>
-    <div class="form-group"><label class="form-label">Descrição *</label><input class="form-input" id="ep-name" value="${p.name}"/></div>
-    <div class="form-group"><label class="form-label">Valor (R$) *</label><input class="form-input" id="ep-price" type="number" step="0.01" value="${p.price}" inputmode="decimal"/></div>
+    <div class="form-group"><label class="form-label">Descrição *</label>
+      <input class="form-input" id="ep-name" value="${p.name}"/></div>
+    <div class="form-group"><label class="form-label">Valor (R$) *</label>
+      <input class="form-input" id="ep-price" type="number" step="0.01" value="${p.price}" inputmode="decimal"/></div>
     <div class="row">
       <div class="form-group"><button class="btn btn-red btn-sm" onclick="deleteProduct('${p.code}')">Excluir</button></div>
       <div class="form-group" style="flex:2;"><button class="btn btn-primary" onclick="updateProduct('${p.code}')">Salvar</button></div>
@@ -822,8 +876,10 @@ function showRegisterProduct(code){
     <div class="modal-handle"></div>
     <div class="modal-title">Produto não cadastrado</div>
     <div style="font-family:monospace;font-size:12px;background:var(--bg3);padding:8px 12px;border-radius:8px;margin-bottom:16px;color:var(--text2);">📷 ${code}</div>
-    <div class="form-group"><label class="form-label">Descrição *</label><input class="form-input" id="rp-name" placeholder="Ex: Camisa Social Azul M"/></div>
-    <div class="form-group"><label class="form-label">Valor (R$) *</label><input class="form-input" id="rp-price" type="number" step="0.01" placeholder="0,00" inputmode="decimal"/></div>
+    <div class="form-group"><label class="form-label">Descrição *</label>
+      <input class="form-input" id="rp-name" placeholder="Ex: Camisa Social Azul M"/></div>
+    <div class="form-group"><label class="form-label">Valor (R$) *</label>
+      <input class="form-input" id="rp-price" type="number" step="0.01" placeholder="0,00" inputmode="decimal"/></div>
     <div class="row">
       <div class="form-group"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button></div>
       <div class="form-group"><button class="btn btn-primary" onclick="saveProduct('${code}')">Cadastrar</button></div>
@@ -860,7 +916,6 @@ function renderOrders(){
       </div>
     </div>`;
   }).join(''):`<div class="empty" style="padding:28px;"><p>Nenhum pedido em aberto</p></div>`;
-
   const closedHtml=closed.map((o,i)=>`
     <div class="card" style="cursor:pointer;opacity:.85;" onclick="showClosedDetail(${i})">
       <div style="display:flex;align-items:center;gap:12px;">
@@ -873,16 +928,13 @@ function renderOrders(){
         </div>
       </div>
     </div>`).join('');
-
   document.getElementById('content').innerHTML=`
     <div class="section-label">Em aberto</div>${openHtml}
     ${closed.length?`<div class="section-label" style="margin-top:16px;">Histórico de pagamentos</div>${closedHtml}`:''}
-    <div style="height:12px;"></div>
-  `;
+    <div style="height:12px;"></div>`;
 }
 function showOrderDetail(clientId){
-  const client=S.clients[clientId];
-  const order=S.orders[clientId]; if(!order) return;
+  const client=S.clients[clientId]; const order=S.orders[clientId]; if(!order) return;
   const items=Object.values(order.items||{});
   showModal(`
     <div class="modal-handle"></div>
@@ -914,7 +966,7 @@ function showClosedDetail(idx){
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
       <div style="font-size:28px;">✅</div>
       <div><div class="modal-title" style="margin-bottom:2px;">${o.clientName}</div>
-      <div style="font-size:13px;color:var(--text2);">${o.clientPhone?'📱 '+o.clientPhone:''}<br>Pago em ${fmtDate(o.closedAt)}</div></div>
+      <div style="font-size:13px;color:var(--text2);">${o.clientPhone?'📱 '+o.clientPhone:''} Pago em ${fmtDate(o.closedAt)}</div></div>
     </div>
     <div class="card" style="margin-bottom:16px;">
       ${items.map(i=>`<div class="item-row">
@@ -976,22 +1028,17 @@ function renderSettings(){
       <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">Apaga todos os dados permanentemente.</p>
       <button class="btn btn-red" onclick="clearAll()">🗑 Apagar todos os dados</button>
     </div>
-    <div style="height:12px;"></div>
-  `;
+    <div style="height:12px;"></div>`;
 }
 function showGitHubSetup(){
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title">🔗 Configurar GitHub</div>
-    <div class="form-group">
-      <label class="form-label">Repositório (usuário/repo) *</label>
-      <input class="form-input" id="gh-repo" placeholder="Ex: douglasmenegasso/consignado" value="${S.ghRepo}"/>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Token de acesso (PAT) *</label>
+    <div class="form-group"><label class="form-label">Repositório (usuário/repo) *</label>
+      <input class="form-input" id="gh-repo" placeholder="Ex: douglasmenegasso/consignado" value="${S.ghRepo}"/></div>
+    <div class="form-group"><label class="form-label">Token de acesso (PAT) *</label>
       <input class="form-input" id="gh-token" type="password" placeholder="ghp_xxxxxxxxxxxx" value="${S.ghToken}"/>
-      <div class="form-hint">github.com → Settings → Developer settings → Personal access tokens → Tokens (classic) → marque <b>repo</b></div>
-    </div>
+      <div class="form-hint">github.com → Settings → Developer settings → Personal access tokens → Tokens (classic) → marque <b>repo</b></div></div>
     <div class="row">
       <div class="form-group"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button></div>
       <div class="form-group"><button class="btn btn-primary" onclick="saveGitHubConfig()">Salvar e testar</button></div>
@@ -1064,7 +1111,7 @@ function confirmClearAll(){
 }
 
 // ══════════════════════════════════════════════════════════
-// INIT — load Quagga2 then start app
+// INIT — load ZXing then start
 // ══════════════════════════════════════════════════════════
 async function init(){
   if(S.ghToken&&S.ghRepo){
@@ -1073,18 +1120,11 @@ async function init(){
   showTab('scan');
 }
 
-(function loadQuagga(){
+(function loadZXing(){
   const s=document.createElement('script');
-  s.src='https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js';
+  s.src='https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js';
   s.onload=()=>init();
-  s.onerror=()=>{
-    // Fallback CDN
-    const s2=document.createElement('script');
-    s2.src='https://unpkg.com/@ericblade/quagga2@1.8.4/dist/quagga.min.js';
-    s2.onload=()=>init();
-    s2.onerror=()=>{ console.error('Quagga failed'); init(); };
-    document.head.appendChild(s2);
-  };
+  s.onerror=()=>{console.error('ZXing load failed'); init();};
   document.head.appendChild(s);
 })();
 </script>
