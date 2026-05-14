@@ -47,10 +47,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .search-wrap{position:relative;margin-bottom:14px;}
 .search-wrap .form-input{padding-left:40px;}
 .search-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none;}
+/* Scanner — portrait ratio to match iOS 480x640 */
 .scan-box{position:relative;border-radius:var(--radius);overflow:hidden;background:#000;aspect-ratio:3/4;margin-bottom:4px;}
-.scan-box video{width:100%;height:100%;object-fit:cover;display:block;}
+.scan-box video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
 .scan-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;}
-.scan-frame{width:65%;height:45%;position:relative;}
+.scan-frame{width:70%;height:40%;position:relative;}
 .sc{position:absolute;width:24px;height:24px;border-color:var(--accent2);border-style:solid;}
 .sc.tl{top:0;left:0;border-width:3px 0 0 3px;border-radius:4px 0 0 0;}
 .sc.tr{top:0;right:0;border-width:3px 3px 0 0;border-radius:0 4px 0 0;}
@@ -123,7 +124,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 </div>
 <div id="modal-root"></div>
 <div id="toast-root"></div>
-<canvas id="decode-canvas" style="display:none;"></canvas>
 
 <script>
 // ══════════════════════════════════════════════════════════
@@ -202,145 +202,90 @@ function showModal(html){
   document.getElementById('modal-root').innerHTML=
     `<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">${html}</div></div>`;
 }
-function closeModal(){_stopScan(); document.getElementById('modal-root').innerHTML='';}
+function closeModal(){
+  _stopAllScan();
+  document.getElementById('modal-root').innerHTML='';
+}
 
 // ══════════════════════════════════════════════════════════
-// SCANNER — ZXing with correct iOS portrait handling
+// SCANNER — BrowserMultiFormatReader (confirmed working on iOS)
 // ══════════════════════════════════════════════════════════
-let _stream=null, _running=false, _rafId=null, _zxReader=null;
-let _scanCallback=null, _scanTarget=null;
+let _mainReader=null;   // BrowserMultiFormatReader for main scanner
+let _modalReader=null;  // BrowserMultiFormatReader for modal scanner
+let _mainStream=null;
+let _modalStream=null;
 
-function _getReader(){
-  if(!_zxReader){
-    const hints=new Map();
-    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[
-      ZXing.BarcodeFormat.QR_CODE,
-      ZXing.BarcodeFormat.EAN_13,
-      ZXing.BarcodeFormat.EAN_8,
-      ZXing.BarcodeFormat.CODE_128,
-      ZXing.BarcodeFormat.CODE_39,
-      ZXing.BarcodeFormat.UPC_A,
-      ZXing.BarcodeFormat.UPC_E,
-      ZXing.BarcodeFormat.ITF,
-      ZXing.BarcodeFormat.DATA_MATRIX,
-      ZXing.BarcodeFormat.AZTEC,
-      ZXing.BarcodeFormat.PDF_417,
-      ZXing.BarcodeFormat.CODABAR,
-    ]);
-    hints.set(ZXing.DecodeHintType.TRY_HARDER,true);
-    _zxReader=new ZXing.MultiFormatReader();
-    _zxReader.setHints(hints);
+async function _getStream(){
+  try{
+    return await navigator.mediaDevices.getUserMedia({video:{facingMode:{exact:'environment'}}});
+  }catch(e){
+    return await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
   }
-  return _zxReader;
 }
 
-async function _stopScan(){
-  _running=false;
-  _scanCallback=null;
-  _scanTarget=null;
-  if(_rafId){cancelAnimationFrame(_rafId);_rafId=null;}
-  if(_stream){_stream.getTracks().forEach(t=>t.stop());_stream=null;}
-  await new Promise(r=>setTimeout(r,150));
+async function _playVideo(video, stream){
+  video.srcObject=stream;
+  video.setAttribute('playsinline','');
+  video.setAttribute('webkit-playsinline','');
+  video.muted=true;
+  await new Promise((res,rej)=>{
+    const t=setTimeout(()=>rej(new Error('timeout')),10000);
+    const go=()=>{clearTimeout(t); video.play().then(res).catch(rej);};
+    video.readyState>=3?go():video.addEventListener('canplay',go,{once:true});
+  });
 }
 
-async function _startScan(videoEl, onCode){
-  await _stopScan();
-  if(!videoEl) return;
-  _scanCallback=onCode;
-  _scanTarget=videoEl;
+// Stop all active scanners
+async function _stopAllScan(){
+  if(_mainReader){try{_mainReader.reset();}catch(e){} _mainReader=null;}
+  if(_modalReader){try{_modalReader.reset();}catch(e){} _modalReader=null;}
+  if(_mainStream){_mainStream.getTracks().forEach(t=>t.stop()); _mainStream=null;}
+  if(_modalStream){_modalStream.getTracks().forEach(t=>t.stop()); _modalStream=null;}
+  await new Promise(r=>setTimeout(r,100));
+}
+
+async function startMainScan(){
+  if(location.protocol==='file:'){
+    _showCamOverlay('Abra via HTTPS (GitHub Pages) para usar a câmera.<br>Use a entrada manual abaixo.',false);
+    return;
+  }
+  const video=document.getElementById('main-video');
+  if(!video) return;
 
   try{
-    // iOS Safari requires exact environment first, fallback to environment
-    try{
-      _stream=await navigator.mediaDevices.getUserMedia({
-        video:{facingMode:{exact:'environment'}}
-      });
-    }catch(e){
-      _stream=await navigator.mediaDevices.getUserMedia({
-        video:{facingMode:'environment'}
-      });
-    }
+    if(_mainReader){try{_mainReader.reset();}catch(e){} _mainReader=null;}
+    if(_mainStream){_mainStream.getTracks().forEach(t=>t.stop()); _mainStream=null;}
 
-    videoEl.setAttribute('playsinline','');
-    videoEl.setAttribute('webkit-playsinline','');
-    videoEl.setAttribute('muted','');
-    videoEl.muted=true;
-    videoEl.autoplay=true;
-    videoEl.srcObject=_stream;
+    _mainStream=await _getStream();
+    await _playVideo(video,_mainStream);
+    _hideCamOverlay();
 
-    // Wait for canplay — most reliable on iOS
-    await new Promise((res,rej)=>{
-      const tid=setTimeout(()=>rej(new Error('Camera timeout')),10000);
-      const go=()=>{clearTimeout(tid); videoEl.play().then(res).catch(rej);};
-      videoEl.readyState>=3 ? go() : videoEl.addEventListener('canplay',go,{once:true});
+    _mainReader=new ZXing.BrowserMultiFormatReader();
+    let last='',lastT=0;
+
+    _mainReader.decodeFromStream(_mainStream, video, (result,err)=>{
+      if(!result) return;
+      const code=result.getText();
+      const now=Date.now();
+      if(code===last&&now-lastT<2500) return;
+      last=code; lastT=now;
+      _onMainCode(code);
     });
 
-    // Extra wait for iOS camera to stabilise and auto-focus
-    await new Promise(r=>setTimeout(r,1200));
-
-    _running=true;
-    const canvas=document.getElementById('decode-canvas');
-    const ctx=canvas.getContext('2d',{willReadFrequently:true});
-    const reader=_getReader();
-    let last='',lastT=0,tick=0;
-
-    const loop=()=>{
-      if(!_running) return;
-      tick++;
-
-      // Decode every 3rd frame — balance between speed and CPU
-      if(tick%3===0 && videoEl.readyState>=2 && videoEl.videoWidth>0){
-        try{
-          const vw=videoEl.videoWidth;
-          const vh=videoEl.videoHeight;
-
-          // Use actual video size — do NOT rescale, iOS gives 480x640
-          canvas.width=vw;
-          canvas.height=vh;
-          ctx.drawImage(videoEl,0,0,vw,vh);
-
-          const imageData=ctx.getImageData(0,0,vw,vh);
-          const rgba=imageData.data;
-
-          // Build RGB array (ZXing needs 3 bytes per pixel, not 4)
-          const rgb=new Uint8ClampedArray(vw*vh*3);
-          for(let i=0,j=0;i<rgba.length;i+=4,j+=3){
-            rgb[j]=rgba[i]; rgb[j+1]=rgba[i+1]; rgb[j+2]=rgba[i+2];
-          }
-
-          const lum=new ZXing.RGBLuminanceSource(rgb,vw,vh);
-          const bmp=new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
-
-          try{
-            const result=reader.decode(bmp);
-            if(result){
-              const code=result.getText();
-              const now=Date.now();
-              if(code!==last || now-lastT>2500){
-                last=code; lastT=now;
-                if(_scanCallback) _scanCallback(code);
-              }
-            }
-          }catch(e){/* NotFoundException — no barcode in frame, normal */}
-
-        }catch(e){/* drawImage or getImageData error */}
-      }
-
-      if(_running) _rafId=requestAnimationFrame(loop);
-    };
-
-    _rafId=requestAnimationFrame(loop);
-
   }catch(err){
-    _running=false;
     const denied=err.name==='NotAllowedError'||err.name==='SecurityError';
     _showCamOverlay(
       denied
-        ? '🍎 <b>iPhone:</b> Ajustes → Safari → Câmera → Permitir<br><br>Ou use a entrada manual abaixo.'
-        : 'Câmera não disponível.<br>Use a entrada manual de código abaixo.',
+        ?'🍎 <b>iPhone:</b> Ajustes → Safari → Câmera → Permitir<br><br>Ou use a entrada manual abaixo.'
+        :'Câmera não disponível: '+err.message+'<br>Use a entrada manual abaixo.',
       denied
     );
   }
+}
+
+function stopMainScan(){
+  if(_mainReader){try{_mainReader.reset();}catch(e){} _mainReader=null;}
+  if(_mainStream){_mainStream.getTracks().forEach(t=>t.stop()); _mainStream=null;}
 }
 
 function _showCamOverlay(msg,showBtn=true){
@@ -350,24 +295,7 @@ function _showCamOverlay(msg,showBtn=true){
   const b=document.getElementById('cam-btn'); if(b) b.style.display=showBtn?'flex':'none';
 }
 function _hideCamOverlay(){const o=document.getElementById('cam-overlay');if(o) o.style.display='none';}
-
-function requestCameraPermission(){
-  _hideCamOverlay();
-  const v=document.getElementById('main-video');
-  if(v) _startScan(v, _onMainCode);
-}
-
-function startMainScan(){
-  if(location.protocol==='file:'){
-    _showCamOverlay('Abra via HTTPS (GitHub Pages) para usar a câmera.<br>Use a entrada manual abaixo.',false);
-    return;
-  }
-  const v=document.getElementById('main-video');
-  if(!v) return;
-  _startScan(v, _onMainCode);
-}
-
-function stopMainScan(){ _stopScan(); }
+function requestCameraPermission(){ _hideCamOverlay(); startMainScan(); }
 
 let _mainLast='',_mainLastT=0;
 function _onMainCode(code){
@@ -377,12 +305,13 @@ function _onMainCode(code){
   handleCode(code);
 }
 
-// Modal scanner for product registration
+// Modal scanner
 let _modalScanOn=false;
 function toggleModalScan(){
   if(_modalScanOn){
     _modalScanOn=false;
-    _stopScan();
+    if(_modalReader){try{_modalReader.reset();}catch(e){} _modalReader=null;}
+    if(_modalStream){_modalStream.getTracks().forEach(t=>t.stop()); _modalStream=null;}
     const wrap=document.getElementById('modal-scan-wrap');
     const btn=document.getElementById('modal-scan-btn');
     if(wrap) wrap.style.display='none';
@@ -393,25 +322,42 @@ function toggleModalScan(){
     const btn=document.getElementById('modal-scan-btn');
     if(wrap) wrap.style.display='block';
     if(btn){btn.style.background='var(--accent)';btn.style.borderColor='var(--accent)';btn.textContent='⏳';btn.disabled=true;}
-    setTimeout(()=>{
+    setTimeout(async()=>{
       if(!_modalScanOn) return;
       const b=document.getElementById('modal-scan-btn');
-      if(b){b.textContent='📷';b.disabled=false;}
-      const v=document.getElementById('modal-video');
-      if(!v) return;
-      _startScan(v,(code)=>{
+      const video=document.getElementById('modal-video');
+      if(!video){if(b){b.textContent='📷';b.disabled=false;} return;}
+      try{
+        _modalStream=await _getStream();
+        await _playVideo(video,_modalStream);
+        if(b){b.textContent='⏹';b.disabled=false;}
+        _modalReader=new ZXing.BrowserMultiFormatReader();
+        let last='',lastT=0;
+        _modalReader.decodeFromStream(_modalStream, video, (result,err)=>{
+          if(!result||!_modalScanOn) return;
+          const code=result.getText();
+          const now=Date.now();
+          if(code===last&&now-lastT<2500) return;
+          last=code; lastT=now;
+          // Code detected — fill the input
+          _modalScanOn=false;
+          if(_modalReader){try{_modalReader.reset();}catch(e){} _modalReader=null;}
+          if(_modalStream){_modalStream.getTracks().forEach(t=>t.stop()); _modalStream=null;}
+          const inp=document.getElementById('mp-code');
+          const w=document.getElementById('modal-scan-wrap');
+          const b2=document.getElementById('modal-scan-btn');
+          if(inp) inp.value=code;
+          if(w)   w.style.display='none';
+          if(b2)  {b2.style.background='var(--green)';b2.style.borderColor='var(--green)';b2.textContent='✓';b2.disabled=false;}
+          toast('Código lido!');
+          setTimeout(()=>document.getElementById('mp-name')?.focus(),150);
+        });
+      }catch(err){
         _modalScanOn=false;
-        _stopScan();
-        const inp=document.getElementById('mp-code');
-        const w=document.getElementById('modal-scan-wrap');
-        const b=document.getElementById('modal-scan-btn');
-        if(inp) inp.value=code;
-        if(w)   w.style.display='none';
-        if(b)   {b.style.background='var(--green)';b.style.borderColor='var(--green)';b.textContent='✓';b.disabled=false;}
-        toast('Código lido!');
-        setTimeout(()=>document.getElementById('mp-name')?.focus(),150);
-      });
-    },400);
+        if(b){b.style.background='var(--bg3)';b.style.borderColor='var(--border)';b.textContent='📷';b.disabled=false;}
+        toast('Câmera indisponível','err');
+      }
+    },300);
   }
 }
 
@@ -668,10 +614,8 @@ function _clientFormModal(title,nameDef,phoneDef,btns){
   setTimeout(()=>document.getElementById('cf-name')?.focus(),100);
 }
 function _readCF(){
-  return{
-    name:(document.getElementById('cf-name')?.value||'').trim(),
-    phone:(document.getElementById('cf-phone')?.value||'').trim()
-  };
+  return{name:(document.getElementById('cf-name')?.value||'').trim(),
+         phone:(document.getElementById('cf-phone')?.value||'').trim()};
 }
 function showNewClientForm(redirect){
   _clientFormModal('Novo Cliente','','',`
@@ -864,12 +808,10 @@ function updateProduct(code){
   const name=document.getElementById('ep-name').value.trim();
   const price=parseFloat(document.getElementById('ep-price').value);
   if(!name||isNaN(price)||price<=0){toast('Preencha todos os campos','err');return;}
-  S.products[code]={code,name,price};
-  save(); closeModal(); renderProducts(); toast('Produto atualizado!');
+  S.products[code]={code,name,price}; save(); closeModal(); renderProducts(); toast('Produto atualizado!');
 }
 function deleteProduct(code){
-  delete S.products[code];
-  save(); closeModal(); renderProducts(); toast('Produto excluído');
+  delete S.products[code]; save(); closeModal(); renderProducts(); toast('Produto excluído');
 }
 function showRegisterProduct(code){
   showModal(`
@@ -891,8 +833,7 @@ function saveProduct(code){
   const name=document.getElementById('rp-name').value.trim();
   const price=parseFloat(document.getElementById('rp-price').value);
   if(!name||isNaN(price)||price<=0){toast('Preencha todos os campos','err');return;}
-  S.products[code]={code,name,price};
-  save(); closeModal(); toast('✓ Produto cadastrado!');
+  S.products[code]={code,name,price}; save(); closeModal(); toast('✓ Produto cadastrado!');
 }
 
 // ══════════════════════════════════════════════════════════
@@ -966,7 +907,7 @@ function showClosedDetail(idx){
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
       <div style="font-size:28px;">✅</div>
       <div><div class="modal-title" style="margin-bottom:2px;">${o.clientName}</div>
-      <div style="font-size:13px;color:var(--text2);">${o.clientPhone?'📱 '+o.clientPhone:''} Pago em ${fmtDate(o.closedAt)}</div></div>
+      <div style="font-size:13px;color:var(--text2);">${o.clientPhone?'📱 '+o.clientPhone+' · ':''}Pago em ${fmtDate(o.closedAt)}</div></div>
     </div>
     <div class="card" style="margin-bottom:16px;">
       ${items.map(i=>`<div class="item-row">
@@ -989,11 +930,9 @@ function deleteClosedOrder(idx){S.closed.splice(idx,1);save();closeModal();rende
 // SETTINGS TAB
 // ══════════════════════════════════════════════════════════
 function renderSettings(){
-  const nP=Object.keys(S.products).length;
-  const nC=Object.keys(S.clients).length;
+  const nP=Object.keys(S.products).length, nC=Object.keys(S.clients).length;
   const nO=Object.values(S.orders).filter(o=>Object.keys(o.items||{}).length>0).length;
-  const nCl=(S.closed||[]).length;
-  const ghOk=S.ghToken&&S.ghRepo;
+  const nCl=(S.closed||[]).length, ghOk=S.ghToken&&S.ghRepo;
   document.getElementById('content').innerHTML=`
     <div class="card">
       <div class="card-title">Resumo</div>
@@ -1053,8 +992,7 @@ async function saveGitHubConfig(){
   DB.save('csn_ghrepo',repo); DB.save('csn_ghtoken',token);
   toast('Testando conexão…','info'); closeModal();
   try{
-    const loaded=await ghLoad();
-    if(!loaded) await ghSave();
+    const loaded=await ghLoad(); if(!loaded) await ghSave();
     toast('✅ GitHub conectado!','ok');
   }catch(e){toast('Erro: '+e.message,'err');}
   renderSettings();
@@ -1111,7 +1049,7 @@ function confirmClearAll(){
 }
 
 // ══════════════════════════════════════════════════════════
-// INIT — load ZXing then start
+// INIT — load ZXing BrowserMultiFormatReader then start
 // ══════════════════════════════════════════════════════════
 async function init(){
   if(S.ghToken&&S.ghRepo){
