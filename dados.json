@@ -29,6 +29,11 @@
       "code": "7891203058171",
       "name": "Panco Maizena",
       "price": 10
+    },
+    "7898959897085": {
+      "code": "7898959897085",
+      "name": "Lenço umedecido",
+      "price": 3.99
     }
   },
   "clients": {
@@ -80,5 +85,5 @@
     }
   },
   "closed": [],
-  "savedAt": "2026-05-16T23:05:23.984Z"
+  "savedAt": "2026-05-16T23:05:27.325Z"
 }
