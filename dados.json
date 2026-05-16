@@ -46,38 +46,8 @@
           "code": "7897595633675",
           "name": "Bissulfato de clopidogrel",
           "price": 28.9,
-          "qty": 1
-        }
-      },
-      "total": 28.9,
-      "status": "open"
-    },
-    "c_1778952716290": {
-      "clientId": "c_1778952716290",
-      "items": {
-        "7897595633675": {
-          "code": "7897595633675",
-          "name": "Bissulfato de clopidogrel",
-          "price": 28.9,
-          "qty": 1
+          "qty": 3
         },
-        "7891058000943": {
-          "code": "7891058000943",
-          "name": "Succinato de metoprolol",
-          "price": 15,
-          "qty": 1
-        }
-      },
-      "total": 43.9,
-      "status": "waiting"
-    }
-  },
-  "closed": [
-    {
-      "clientId": "c_1778952708202",
-      "clientName": "Ayla",
-      "clientPhone": "",
-      "items": {
         "7891058000943": {
           "code": "7891058000943",
           "name": "Succinato de metoprolol",
@@ -85,9 +55,10 @@
           "qty": 2
         }
       },
-      "total": 30,
-      "closedAt": "2026-05-16T19:08:10.410Z"
+      "total": 116.69999999999999,
+      "status": "waiting"
     }
-  ],
-  "savedAt": "2026-05-16T19:09:11.818Z"
+  },
+  "closed": [],
+  "savedAt": "2026-05-16T19:09:56.500Z"
 }
