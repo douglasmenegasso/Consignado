@@ -147,9 +147,13 @@
       },
       "total": 33.36,
       "status": "waiting"
-    },
-    "c_1778952708202": {
+    }
+  },
+  "closed": [
+    {
       "clientId": "c_1778952708202",
+      "clientName": "Ayla",
+      "clientPhone": "",
       "items": {
         "78948174": {
           "code": "78948174",
@@ -195,9 +199,8 @@
         }
       },
       "total": 64.75,
-      "status": "waiting"
+      "closedAt": "2026-05-16T23:14:17.958Z"
     }
-  },
-  "closed": [],
-  "savedAt": "2026-05-16T23:13:20.358Z"
+  ],
+  "savedAt": "2026-05-16T23:14:17.959Z"
 }
