@@ -176,12 +176,20 @@ async function ghLoad(){
     saveLocal(); return true;
   }catch(e){if(e.message&&e.message.includes('Not Found')) return false; throw e;}
 }
+let _syncing=false;
 async function ghSave(){
   if(!S.ghToken||!S.ghRepo) return;
-  const d={products:S.products,clients:S.clients,orders:S.orders,closed:S.closed,savedAt:new Date().toISOString()};
-  const content=btoa(unescape(encodeURIComponent(JSON.stringify(d,null,2))));
-  let sha; try{const f=await ghReq('GET',GH_FILE); sha=f.sha;}catch(e){}
-  await ghReq('PUT',GH_FILE,{message:'Sync '+new Date().toLocaleString('pt-BR'),content,...(sha?{sha}:{})});
+  if(_syncing) return; // prevent concurrent saves
+  _syncing=true;
+  try{
+    const d={products:S.products,clients:S.clients,orders:S.orders,closed:S.closed,savedAt:new Date().toISOString()};
+    const content=btoa(unescape(encodeURIComponent(JSON.stringify(d,null,2))));
+    // Always fetch fresh SHA before saving to avoid conflicts
+    let sha; try{const f=await ghReq('GET',GH_FILE); sha=f.sha;}catch(e){}
+    await ghReq('PUT',GH_FILE,{message:'Sync '+new Date().toLocaleString('pt-BR'),content,...(sha?{sha}:{})});
+  }finally{
+    _syncing=false;
+  }
 }
 async function syncGitHub(show=true){
   if(!S.ghToken||!S.ghRepo){if(show) toast('Configure o GitHub nas ⚙️ Config','info'); return;}
@@ -189,12 +197,12 @@ async function syncGitHub(show=true){
   catch(e){toast('Erro GitHub: '+e.message,'err');}
 }
 
-// Auto-sync every 5 seconds
+// Auto-sync every 30 seconds (5s is too aggressive for GitHub API rate limits)
 let _autoSyncInterval=null;
 function startAutoSync(){
   stopAutoSync();
   if(!S.ghToken||!S.ghRepo) return;
-  _autoSyncInterval=setInterval(()=>syncGitHub(false), 5000);
+  _autoSyncInterval=setInterval(()=>syncGitHub(false), 30000);
 }
 function stopAutoSync(){
   if(_autoSyncInterval){clearInterval(_autoSyncInterval);_autoSyncInterval=null;}
