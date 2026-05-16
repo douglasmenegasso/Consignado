@@ -189,6 +189,17 @@ async function syncGitHub(show=true){
   catch(e){toast('Erro GitHub: '+e.message,'err');}
 }
 
+// Auto-sync every 5 seconds
+let _autoSyncInterval=null;
+function startAutoSync(){
+  stopAutoSync();
+  if(!S.ghToken||!S.ghRepo) return;
+  _autoSyncInterval=setInterval(()=>syncGitHub(false), 5000);
+}
+function stopAutoSync(){
+  if(_autoSyncInterval){clearInterval(_autoSyncInterval);_autoSyncInterval=null;}
+}
+
 // ══════════════════════════════════════════════════════════
 // UTILS
 // ══════════════════════════════════════════════════════════
@@ -1083,7 +1094,7 @@ async function saveGitHubConfig(){
   S.ghRepo=repo; S.ghToken=token;
   DB.save('csn_ghrepo',repo); DB.save('csn_ghtoken',token);
   toast('Testando conexão…','info'); closeModal();
-  try{ const l=await ghLoad(); if(!l) await ghSave(); toast('✅ GitHub conectado!','ok'); }
+  try{ const l=await ghLoad(); if(!l) await ghSave(); toast('✅ GitHub conectado!','ok'); startAutoSync(); }
   catch(e){ toast('Erro: '+e.message,'err'); }
   renderSettings();
 }
@@ -1140,6 +1151,7 @@ function confirmClearAll(){
 // ══════════════════════════════════════════════════════════
 async function init(){
   if(S.ghToken&&S.ghRepo){ try{await ghLoad();}catch(e){} }
+  startAutoSync();
   showTab('scan');
 }
 (function loadZXing(){
