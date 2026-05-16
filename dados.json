@@ -96,12 +96,18 @@
           "name": "Panco Maizena",
           "price": 10,
           "qty": 1
+        },
+        "7897429363259": {
+          "code": "7897429363259",
+          "name": "Pão 🍞",
+          "price": 4.39,
+          "qty": 1
         }
       },
-      "total": 10,
+      "total": 14.39,
       "status": "open"
     }
   },
   "closed": [],
-  "savedAt": "2026-05-16T23:07:45.033Z"
+  "savedAt": "2026-05-16T23:07:49.216Z"
 }
