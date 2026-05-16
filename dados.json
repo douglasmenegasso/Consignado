@@ -43,7 +43,21 @@
       "phone": ""
     }
   },
-  "orders": {},
+  "orders": {
+    "c_1778952697390": {
+      "clientId": "c_1778952697390",
+      "items": {
+        "7897595633675": {
+          "code": "7897595633675",
+          "name": "Bissulfato de clopidogrel",
+          "price": 28.9,
+          "qty": 1
+        }
+      },
+      "total": 28.9,
+      "status": "open"
+    }
+  },
   "closed": [],
-  "savedAt": "2026-05-16T17:57:11.821Z"
+  "savedAt": "2026-05-16T17:57:16.340Z"
 }
