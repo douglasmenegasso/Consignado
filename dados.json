@@ -115,12 +115,24 @@
           "name": "Succinato de metoprolol",
           "price": 15,
           "qty": 1
+        },
+        "1220173815235": {
+          "code": "1220173815235",
+          "name": "Sinvastatina",
+          "price": 9.98,
+          "qty": 1
+        },
+        "7897429363259": {
+          "code": "7897429363259",
+          "name": "Pão 🍞",
+          "price": 4.39,
+          "qty": 1
         }
       },
-      "total": 15,
+      "total": 29.37,
       "status": "open"
     }
   },
   "closed": [],
-  "savedAt": "2026-05-16T23:09:29.715Z"
+  "savedAt": "2026-05-16T23:09:34.911Z"
 }
