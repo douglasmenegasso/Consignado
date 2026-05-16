@@ -2,13 +2,18 @@
   "products": {
     "7891058000943": {
       "code": "7891058000943",
-      "name": "Remedio",
-      "price": 50
+      "name": "Succinato de metoprolol",
+      "price": 30.58
     },
     "7896523215235": {
       "code": "7896523215235",
       "name": "Remedio 2",
       "price": 15.19
+    },
+    "7897595633675": {
+      "code": "7897595633675",
+      "name": "Bissulfato de clopidogrel",
+      "price": 35
     }
   },
   "clients": {
@@ -47,6 +52,44 @@
       },
       "total": 160.76,
       "status": "waiting"
+    },
+    "41996427444": {
+      "clientId": "41996427444",
+      "items": {
+        "7891058000943": {
+          "code": "7891058000943",
+          "name": "Succinato de metoprolol",
+          "price": 30.58,
+          "qty": 3
+        },
+        "7896523215235": {
+          "code": "7896523215235",
+          "name": "Remedio 2",
+          "price": 15.19,
+          "qty": 4
+        }
+      },
+      "total": 152.5,
+      "status": "waiting"
+    },
+    "c_1778908900613": {
+      "clientId": "c_1778908900613",
+      "items": {
+        "7891058000943": {
+          "code": "7891058000943",
+          "name": "Succinato de metoprolol",
+          "price": 30.58,
+          "qty": 1
+        },
+        "7897595633675": {
+          "code": "7897595633675",
+          "name": "Bissulfato de clopidogrel",
+          "price": 35,
+          "qty": 1
+        }
+      },
+      "total": 65.58,
+      "status": "waiting"
     }
   },
   "closed": [
@@ -66,5 +109,5 @@
       "closedAt": "2026-05-16T05:34:37.756Z"
     }
   ],
-  "savedAt": "2026-05-16T17:22:39.439Z"
+  "savedAt": "2026-05-16T17:23:37.743Z"
 }
