@@ -1,7 +1,13 @@
 {
   "products": {},
-  "clients": {},
+  "clients": {
+    "c_1778952690646": {
+      "id": "c_1778952690646",
+      "name": "Klara",
+      "phone": ""
+    }
+  },
   "orders": {},
   "closed": [],
-  "savedAt": "2026-05-16T17:31:28.759Z"
+  "savedAt": "2026-05-16T17:31:30.646Z"
 }
