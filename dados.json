@@ -14,6 +14,11 @@
       "code": "7896523215235",
       "name": "Sinvastatina",
       "price": 8.58
+    },
+    "7896004700533": {
+      "code": "7896004700533",
+      "name": "Meleato de Enalapril",
+      "price": 3.47
     }
   },
   "clients": {
@@ -45,5 +50,5 @@
   },
   "orders": {},
   "closed": [],
-  "savedAt": "2026-05-16T17:35:29.204Z"
+  "savedAt": "2026-05-16T17:36:12.280Z"
 }
