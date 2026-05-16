@@ -1,5 +1,11 @@
 {
-  "products": {},
+  "products": {
+    "7891058000943": {
+      "code": "7891058000943",
+      "name": "Succinato de metoprolol",
+      "price": 15
+    }
+  },
   "clients": {
     "c_1778952690646": {
       "id": "c_1778952690646",
@@ -29,5 +35,5 @@
   },
   "orders": {},
   "closed": [],
-  "savedAt": "2026-05-16T17:32:28.761Z"
+  "savedAt": "2026-05-16T17:32:59.148Z"
 }
