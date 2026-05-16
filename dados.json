@@ -156,12 +156,24 @@
           "name": "Cigarro",
           "price": 8,
           "qty": 1
+        },
+        "1220173815235": {
+          "code": "1220173815235",
+          "name": "Sinvastatina",
+          "price": 9.98,
+          "qty": 1
+        },
+        "7891203058171": {
+          "code": "7891203058171",
+          "name": "Panco Maizena",
+          "price": 10,
+          "qty": 1
         }
       },
-      "total": 8,
+      "total": 27.98,
       "status": "open"
     }
   },
   "closed": [],
-  "savedAt": "2026-05-16T23:12:06.631Z"
+  "savedAt": "2026-05-16T23:12:09.181Z"
 }
