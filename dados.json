@@ -22,7 +22,7 @@
     },
     "7896181914280": {
       "code": "7896181914280",
-      "name": "Fosfato sódico de prednisolona",
+      "name": "Fosfato sÃ³dico de prednisolona",
       "price": 21.5
     },
     "7891203058171": {
@@ -32,17 +32,22 @@
     },
     "7898959897085": {
       "code": "7898959897085",
-      "name": "Lenço umedecido",
+      "name": "LenÃ§o umedecido",
       "price": 3.99
     },
     "7897429363259": {
       "code": "7897429363259",
-      "name": "Pão 🍞",
+      "name": "PÃ£o ð",
       "price": 4.39
     },
     "7892840800000": {
       "code": "7892840800000",
       "name": "Pepsi",
+      "price": 12
+    },
+    "7891150072053": {
+      "code": "7891150072053",
+      "name": "Hellmann's",
       "price": 12
     }
   },
@@ -104,7 +109,7 @@
         },
         "7897429363259": {
           "code": "7897429363259",
-          "name": "Pão 🍞",
+          "name": "PÃ£o ð",
           "price": 4.39,
           "qty": 1
         }
@@ -129,13 +134,13 @@
         },
         "7897429363259": {
           "code": "7897429363259",
-          "name": "Pão 🍞",
+          "name": "PÃ£o ð",
           "price": 4.39,
           "qty": 1
         },
         "7898959897085": {
           "code": "7898959897085",
-          "name": "Lenço umedecido",
+          "name": "LenÃ§o umedecido",
           "price": 3.99,
           "qty": 1
         }
@@ -145,5 +150,5 @@
     }
   },
   "closed": [],
-  "savedAt": "2026-05-16T23:11:10.888Z"
+  "savedAt": "2026-05-16T23:11:48.705Z"
 }
