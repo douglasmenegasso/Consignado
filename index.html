@@ -36,7 +36,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .btn-green{background:var(--green);color:#fff;}
 .btn-red{background:var(--red);color:#fff;}
 .btn-amber{background:var(--amber);color:#000;}
-.btn-blue{background:var(--blue);color:#fff;}
 .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text);}
 .btn-sm{padding:8px 14px;font-size:13px;width:auto;}
 .form-group{margin-bottom:14px;}
@@ -48,7 +47,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .search-wrap{position:relative;margin-bottom:14px;}
 .search-wrap .form-input{padding-left:40px;}
 .search-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none;}
-.scan-box{position:relative;border-radius:var(--radius);overflow:hidden;background:#000;aspect-ratio:3/4;margin-bottom:4px;}
+/* Scanner — auto height based on viewport, max 40vh */
+.scan-box{position:relative;border-radius:var(--radius);overflow:hidden;background:#000;height:min(40vh, 280px);margin-bottom:4px;}
 .scan-box video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
 .scan-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;}
 .scan-frame{width:70%;height:40%;position:relative;}
@@ -104,9 +104,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .scan-icon-btn{flex-shrink:0;width:44px;height:44px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .section-label{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;}
 .status-banner{border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
-.status-open{background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.3);color:var(--accent2);}
 .status-waiting{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:var(--amber);}
-.status-paid{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:var(--green);}
 ::-webkit-scrollbar{width:4px;}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
 </style>
@@ -132,358 +130,426 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 
 <script>
 // ══════════════════════════════════════════════════════════
-// STATE
+// STATE — plain objects, no limits
 // ══════════════════════════════════════════════════════════
-const DB={
-  load(k,d){try{const v=localStorage.getItem(k);return v!=null?JSON.parse(v):d;}catch{return d;}},
-  save(k,v){localStorage.setItem(k,JSON.stringify(v));}
+const DB = {
+  load(k, d) { try { const v = localStorage.getItem(k); return v != null ? JSON.parse(v) : d; } catch { return d; } },
+  save(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
 };
-let S={
-  products:DB.load('csn_products',{}),
-  clients: DB.load('csn_clients', {}),
-  orders:  DB.load('csn_orders',  {}),  // status: 'open' | 'waiting'
-  closed:  DB.load('csn_closed',  []),   // paid orders history
-  ghToken: DB.load('csn_ghtoken', ''),
-  ghRepo:  DB.load('csn_ghrepo',  ''),
-  activeClient:null, scanMode:'sale', tab:'scan'
+
+let S = {
+  products: DB.load('csn_products', {}),
+  clients:  DB.load('csn_clients',  {}),
+  orders:   DB.load('csn_orders',   {}),
+  closed:   DB.load('csn_closed',   []),
+  ghToken:  DB.load('csn_ghtoken',  ''),
+  ghRepo:   DB.load('csn_ghrepo',   ''),
+  activeClient: null,
+  scanMode: 'sale',
+  tab: 'scan',
+  lastSaved: null
 };
-function saveLocal(){
-  DB.save('csn_products',S.products); DB.save('csn_clients',S.clients);
-  DB.save('csn_orders',S.orders);     DB.save('csn_closed',S.closed);
+
+function saveLocal() {
+  DB.save('csn_products', S.products);
+  DB.save('csn_clients',  S.clients);
+  DB.save('csn_orders',   S.orders);
+  DB.save('csn_closed',   S.closed);
 }
-async function save(){ saveLocal(); S._lastSaved=new Date().toISOString(); syncGitHub(false); }
+
+function save() {
+  saveLocal();
+  S.lastSaved = new Date().toISOString();
+  ghSaveQueued();
+}
 
 // ══════════════════════════════════════════════════════════
-// GITHUB SYNC
+// GITHUB SYNC — queue-based, no SHA conflicts
 // ══════════════════════════════════════════════════════════
-const GH_FILE='dados.json';
-async function ghReq(method,path,body){
-  if(!S.ghToken||!S.ghRepo) return null;
-  const r=await fetch(`https://api.github.com/repos/${S.ghRepo}/contents/${path}`,{
-    method,headers:{'Authorization':'token '+S.ghToken,'Content-Type':'application/json','Accept':'application/vnd.github.v3+json'},
-    body:body?JSON.stringify(body):undefined
+const GH_FILE = 'dados.json';
+
+async function ghReq(method, path, body) {
+  if (!S.ghToken || !S.ghRepo) return null;
+  const r = await fetch(`https://api.github.com/repos/${S.ghRepo}/contents/${path}`, {
+    method,
+    headers: {
+      'Authorization': 'token ' + S.ghToken,
+      'Content-Type': 'application/json',
+      'Accept': 'application/vnd.github.v3+json'
+    },
+    body: body ? JSON.stringify(body) : undefined
   });
-  if(!r.ok){const e=await r.json();throw new Error(e.message);}
+  if (!r.ok) { const e = await r.json(); throw new Error(e.message); }
   return r.json();
 }
-async function ghLoad(){
-  if(!S.ghToken||!S.ghRepo) return false;
-  try{
-    const f=await ghReq('GET',GH_FILE);
-    const d=JSON.parse(atob(f.content.replace(/\n/g,'')));
-    S.products=d.products||{}; S.clients=d.clients||{};
-    S.orders=d.orders||{};     S.closed=d.closed||[];
-    saveLocal(); return true;
-  }catch(e){if(e.message&&e.message.includes('Not Found')) return false; throw e;}
+
+async function ghLoad() {
+  if (!S.ghToken || !S.ghRepo) return false;
+  try {
+    const f = await ghReq('GET', GH_FILE);
+    const d = JSON.parse(atob(f.content.replace(/\n/g, '')));
+    S.products = d.products || {};
+    S.clients  = d.clients  || {};
+    S.orders   = d.orders   || {};
+    S.closed   = d.closed   || [];
+    S.lastSaved = d.savedAt || null;
+    saveLocal();
+    return true;
+  } catch(e) {
+    if (e.message && e.message.includes('Not Found')) return false;
+    throw e;
+  }
 }
-let _syncing=false;
-let _pendingSync=false;
 
-async function ghSave(){
-  if(!S.ghToken||!S.ghRepo) return;
-  
-  // If already syncing, mark pending and return — will retry after current finishes
-  if(_syncing){ _pendingSync=true; return; }
-  _syncing=true;
-  _pendingSync=false;
+// Queue-based save: prevents concurrent requests and SHA conflicts
+let _ghSaving = false;
+let _ghQueued = false;
 
-  try{
-    const d={products:S.products,clients:S.clients,orders:S.orders,closed:S.closed,savedAt:new Date().toISOString()};
-    const content=btoa(unescape(encodeURIComponent(JSON.stringify(d,null,2))));
-    
-    // Retry up to 3 times on SHA conflict
-    for(let attempt=1; attempt<=3; attempt++){
-      try{
-        // Always fetch fresh SHA immediately before PUT
-        let sha;
-        try{ const f=await ghReq('GET',GH_FILE); sha=f.sha; }catch(e){}
-        await ghReq('PUT',GH_FILE,{
-          message:'Sync '+new Date().toLocaleString('pt-BR'),
-          content,
-          ...(sha?{sha}:{})
-        });
-        break; // success
-      }catch(e){
-        if(attempt===3) throw e;
-        // Wait a bit before retry (exponential backoff)
-        await new Promise(r=>setTimeout(r, attempt*1000));
-      }
+async function ghSaveQueued() {
+  if (!S.ghToken || !S.ghRepo) return;
+  if (_ghSaving) { _ghQueued = true; return; }
+  _ghSaving = true;
+  _ghQueued = false;
+  try {
+    await _ghDoSave();
+  } catch(e) {
+    // Silent fail for background sync
+  } finally {
+    _ghSaving = false;
+    if (_ghQueued) {
+      _ghQueued = false;
+      setTimeout(ghSaveQueued, 1000);
     }
-  }finally{
-    _syncing=false;
-    // If another save was requested while we were busy, run it now
-    if(_pendingSync) setTimeout(()=>ghSave(), 500);
-  }
-}
-async function syncGitHub(show=true){
-  if(!S.ghToken||!S.ghRepo){if(show) toast('Configure o GitHub nas ⚙️ Config','info'); return;}
-  try{
-    await ghSave();
-    if(show) toast('✓ Sincronizado!','ok');
-  }catch(e){
-    // Don't show SHA conflict errors silently — just retry next cycle
-    if(show) toast('Erro GitHub: '+e.message,'err');
   }
 }
 
-// Auto-sync every 60 seconds (safe for multi-device without rate limit issues)
-let _autoSyncInterval=null;
-let _autoPullInterval=null;
-function startAutoSync(){
-  stopAutoSync();
-  if(!S.ghToken||!S.ghRepo) return;
-  // Save local changes every 60s
-  _autoSyncInterval=setInterval(()=>syncGitHub(false), 60000);
-  // Pull remote changes every 30s to stay in sync with other devices
-  _autoPullInterval=setInterval(async()=>{
-    if(_syncing) return;
-    try{
-      const f=await ghReq('GET',GH_FILE);
-      if(!f) return;
-      const d=JSON.parse(atob(f.content.replace(/\n/g,'')));
-      if(!d.savedAt) return;
-      // Only update if remote is newer than local
-      const remoteSaved=new Date(d.savedAt).getTime();
-      const localSaved=new Date(S._lastSaved||0).getTime();
-      if(remoteSaved>localSaved){
-        S.products=d.products||{}; S.clients=d.clients||{};
-        S.orders=d.orders||{};     S.closed=d.closed||[];
-        S._lastSaved=d.savedAt;
-        saveLocal();
-        // Refresh current tab silently
-        if(S.tab==='scan')     renderScan();
-        else if(S.tab==='clients')  renderClients();
-        else if(S.tab==='products') renderProducts();
-        else if(S.tab==='orders')   renderOrders();
-        else if(S.tab==='settings') renderSettings();
-      }
-    }catch(e){}
-  }, 30000);
+async function _ghDoSave() {
+  const d = {
+    products: S.products, clients: S.clients,
+    orders: S.orders, closed: S.closed,
+    savedAt: new Date().toISOString()
+  };
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(d, null, 2))));
+  // Always fetch fresh SHA right before PUT
+  let sha;
+  try { const f = await ghReq('GET', GH_FILE); sha = f.sha; } catch(e) {}
+  await ghReq('PUT', GH_FILE, {
+    message: 'Sync ' + new Date().toLocaleString('pt-BR'),
+    content,
+    ...(sha ? { sha } : {})
+  });
 }
-function stopAutoSync(){
-  if(_autoSyncInterval){clearInterval(_autoSyncInterval);_autoSyncInterval=null;}
-  if(_autoPullInterval){clearInterval(_autoPullInterval);_autoPullInterval=null;}
+
+async function syncNow() {
+  if (!S.ghToken || !S.ghRepo) { toast('Configure o GitHub nas ⚙️ Config', 'info'); return; }
+  try { await _ghDoSave(); toast('✓ Sincronizado!', 'ok'); }
+  catch(e) { toast('Erro: ' + e.message, 'err'); }
+}
+
+// Auto-save every 60s, auto-pull every 30s
+let _saveTimer = null;
+let _pullTimer = null;
+
+function startAutoSync() {
+  stopAutoSync();
+  if (!S.ghToken || !S.ghRepo) return;
+  _saveTimer = setInterval(() => ghSaveQueued(), 60000);
+  _pullTimer = setInterval(() => ghPull(), 30000);
+}
+function stopAutoSync() {
+  if (_saveTimer) { clearInterval(_saveTimer); _saveTimer = null; }
+  if (_pullTimer) { clearInterval(_pullTimer); _pullTimer = null; }
+}
+
+async function ghPull() {
+  if (_ghSaving || !S.ghToken || !S.ghRepo) return;
+  try {
+    const f = await ghReq('GET', GH_FILE);
+    if (!f) return;
+    const d = JSON.parse(atob(f.content.replace(/\n/g, '')));
+    if (!d.savedAt) return;
+    const remoteT = new Date(d.savedAt).getTime();
+    const localT  = S.lastSaved ? new Date(S.lastSaved).getTime() : 0;
+    if (remoteT > localT) {
+      S.products = d.products || {};
+      S.clients  = d.clients  || {};
+      S.orders   = d.orders   || {};
+      S.closed   = d.closed   || [];
+      S.lastSaved = d.savedAt;
+      saveLocal();
+      refreshCurrentTab();
+    }
+  } catch(e) {}
+}
+
+function refreshCurrentTab() {
+  const t = S.tab;
+  if      (t === 'scan')     renderScan();
+  else if (t === 'clients')  renderClients();
+  else if (t === 'products') renderProducts();
+  else if (t === 'orders')   renderOrders();
+  else if (t === 'settings') renderSettings();
 }
 
 // ══════════════════════════════════════════════════════════
 // UTILS
 // ══════════════════════════════════════════════════════════
-function fmt(v){return 'R$ '+Number(v||0).toFixed(2).replace('.',',');}
-function initials(n){return(n||'?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();}
-function fmtDate(iso){return new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});}
-function toast(msg,type='ok'){
-  const el=document.createElement('div');
-  el.className='toast '+type; el.textContent=msg;
+function fmt(v) { return 'R$ ' + Number(v || 0).toFixed(2).replace('.', ','); }
+function initials(n) { return (n || '?').split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase(); }
+function fmtDate(iso) { return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }); }
+
+function toast(msg, type = 'ok') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
   document.getElementById('toast-root').appendChild(el);
-  setTimeout(()=>el.remove(),3000);
+  setTimeout(() => el.remove(), 3000);
 }
-function showModal(html){
-  // Stop modal scanner before replacing modal HTML
+
+function showModal(html) {
   _stopModalScan();
-  document.getElementById('modal-root').innerHTML=
+  document.getElementById('modal-root').innerHTML =
     `<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">${html}</div></div>`;
 }
-function closeModal(){
+function closeModal() {
   _stopModalScan();
-  document.getElementById('modal-root').innerHTML='';
+  document.getElementById('modal-root').innerHTML = '';
 }
 
 // ══════════════════════════════════════════════════════════
-// SCANNER ENGINE — BrowserMultiFormatReader (confirmed iOS)
-// Key fix: always fully reset before starting a new scan session
+// SCANNER — BrowserMultiFormatReader (confirmed iOS + Android)
+// Critical: reset reader+stream completely before every new scan
 // ══════════════════════════════════════════════════════════
-let _mainReader=null;
-let _mainStream=null;
-let _modalReader=null;
-let _modalStream=null;
-let _modalScanOn=false;
+let _mainReader = null;
+let _mainStream = null;
+let _modalReader = null;
+let _modalStream = null;
+let _modalScanOn = false;
 
-async function _getStream(){
-  try{ return await navigator.mediaDevices.getUserMedia({video:{facingMode:{exact:'environment'}}}); }
-  catch(e){ return await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}); }
+function _resetReader(reader, stream) {
+  if (reader) { try { reader.reset(); } catch(e) {} }
+  if (stream) { stream.getTracks().forEach(t => t.stop()); }
+  return { reader: null, stream: null };
 }
 
-async function _playVideo(video, stream){
-  video.srcObject=stream;
-  video.setAttribute('playsinline','');
-  video.setAttribute('webkit-playsinline','');
-  video.muted=true;
-  await new Promise((res,rej)=>{
-    const tid=setTimeout(()=>rej(new Error('timeout')),10000);
-    const go=()=>{clearTimeout(tid); video.play().then(res).catch(rej);};
-    video.readyState>=3?go():video.addEventListener('canplay',go,{once:true});
+async function _getStream() {
+  // Request higher resolution for better barcode detection
+  const constraints = {
+    video: {
+      facingMode: { ideal: 'environment' },
+      width:  { ideal: 1920 },
+      height: { ideal: 1080 },
+      focusMode: 'continuous',        // keep autofocus active
+      zoom: 1                          // no zoom, let user position naturally
+    }
+  };
+  try {
+    return await navigator.mediaDevices.getUserMedia(constraints);
+  } catch(e) {
+    // Fallback: minimal constraints
+    try {
+      return await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: 'environment' } } });
+    } catch(e2) {
+      return await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    }
+  }
+}
+
+function _makeReader() {
+  const hints = new Map();
+  // Only include most common formats — fewer formats = faster decode
+  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+    ZXing.BarcodeFormat.EAN_13,
+    ZXing.BarcodeFormat.EAN_8,
+    ZXing.BarcodeFormat.CODE_128,
+    ZXing.BarcodeFormat.QR_CODE,
+    ZXing.BarcodeFormat.UPC_A,
+    ZXing.BarcodeFormat.UPC_E,
+    ZXing.BarcodeFormat.CODE_39,
+    ZXing.BarcodeFormat.ITF,
+  ]);
+  hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+  const reader = new ZXing.BrowserMultiFormatReader(hints, {
+    delayBetweenScanAttempts: 50,   // scan every 50ms instead of default 500ms
+    delayBetweenScanSuccess: 1000,  // wait 1s between successful reads
+  });
+  return reader;
+}
+
+async function _playVideo(video, stream) {
+  video.srcObject = stream;
+  video.setAttribute('playsinline', '');
+  video.setAttribute('webkit-playsinline', '');
+  video.muted = true;
+  await new Promise((res, rej) => {
+    const tid = setTimeout(() => rej(new Error('timeout')), 10000);
+    const go = () => { clearTimeout(tid); video.play().then(res).catch(rej); };
+    video.readyState >= 3 ? go() : video.addEventListener('canplay', go, { once: true });
   });
 }
 
-// Fully reset a reader + stream — CRITICAL for iOS reuse
-function _resetReader(reader, stream){
-  if(reader){ try{reader.reset();}catch(e){} }
-  if(stream){ stream.getTracks().forEach(t=>t.stop()); }
-  return {reader:null, stream:null};
-}
-
-async function startMainScan(){
-  if(location.protocol==='file:'){
-    _showCamOverlay('Abra via HTTPS (GitHub Pages) para usar a câmera.<br>Use a entrada manual abaixo.',false); return;
+async function startMainScan() {
+  if (location.protocol === 'file:') {
+    _showCamOverlay('Abra via HTTPS (GitHub Pages) para usar a câmera.<br>Use a entrada manual abaixo.', false);
+    return;
   }
-  const video=document.getElementById('main-video');
-  if(!video) return;
+  const video = document.getElementById('main-video');
+  if (!video) return;
 
-  // Always reset first
-  const r=_resetReader(_mainReader,_mainStream);
-  _mainReader=r.reader; _mainStream=r.stream;
-  // Small delay after reset before requesting camera again
-  await new Promise(res=>setTimeout(res,300));
+  // Full reset before starting
+  const r = _resetReader(_mainReader, _mainStream);
+  _mainReader = r.reader; _mainStream = r.stream;
+  await new Promise(res => setTimeout(res, 300));
 
-  try{
-    _mainStream=await _getStream();
-    await _playVideo(video,_mainStream);
+  try {
+    _mainStream = await _getStream();
+    await _playVideo(video, _mainStream);
     _hideCamOverlay();
 
-    _mainReader=new ZXing.BrowserMultiFormatReader();
-    let last='',lastT=0;
-    _mainReader.decodeFromStream(_mainStream, video, (result)=>{
-      if(!result) return;
-      const code=result.getText();
-      const now=Date.now();
-      if(code===last&&now-lastT<2500) return;
-      last=code; lastT=now;
+    _mainReader = _makeReader();
+    let last = '', lastT = 0;
+    _mainReader.decodeFromStream(_mainStream, video, (result) => {
+      if (!result) return;
+      const code = result.getText();
+      const now = Date.now();
+      if (code === last && now - lastT < 2500) return;
+      last = code; lastT = now;
       _onMainCode(code);
     });
-  }catch(err){
-    const denied=err.name==='NotAllowedError'||err.name==='SecurityError';
+  } catch(err) {
+    const denied = err.name === 'NotAllowedError' || err.name === 'SecurityError';
     _showCamOverlay(
-      denied?'🍎 <b>iPhone:</b> Ajustes → Safari → Câmera → Permitir<br><br>Ou use a entrada manual abaixo.'
-            :'Câmera não disponível.<br>Use a entrada manual abaixo.',
+      denied
+        ? '🍎 <b>iPhone:</b> Ajustes → Safari → Câmera → Permitir<br><br>Ou use a entrada manual abaixo.'
+        : 'Câmera não disponível.<br>Use a entrada manual abaixo.',
       denied
     );
   }
 }
 
-function stopMainScan(){
-  const r=_resetReader(_mainReader,_mainStream);
-  _mainReader=r.reader; _mainStream=r.stream;
+function stopMainScan() {
+  const r = _resetReader(_mainReader, _mainStream);
+  _mainReader = r.reader; _mainStream = r.stream;
 }
 
-function _showCamOverlay(msg,showBtn=true){
-  const o=document.getElementById('cam-overlay'); if(!o) return;
-  o.style.display='flex';
-  const m=document.getElementById('cam-msg'); if(m) m.innerHTML=msg;
-  const b=document.getElementById('cam-btn'); if(b) b.style.display=showBtn?'flex':'none';
+function _showCamOverlay(msg, showBtn = true) {
+  const o = document.getElementById('cam-overlay'); if (!o) return;
+  o.style.display = 'flex';
+  const m = document.getElementById('cam-msg'); if (m) m.innerHTML = msg;
+  const b = document.getElementById('cam-btn'); if (b) b.style.display = showBtn ? 'flex' : 'none';
 }
-function _hideCamOverlay(){const o=document.getElementById('cam-overlay');if(o) o.style.display='none';}
-function requestCameraPermission(){ _hideCamOverlay(); startMainScan(); }
+function _hideCamOverlay() { const o = document.getElementById('cam-overlay'); if (o) o.style.display = 'none'; }
+function requestCameraPermission() { _hideCamOverlay(); startMainScan(); }
 
-let _mainLast='',_mainLastT=0;
-function _onMainCode(code){
-  const now=Date.now();
-  if(code===_mainLast&&now-_mainLastT<2000) return;
-  _mainLast=code; _mainLastT=now;
+let _mainLast = '', _mainLastT = 0;
+function _onMainCode(code) {
+  const now = Date.now();
+  if (code === _mainLast && now - _mainLastT < 2000) return;
+  _mainLast = code; _mainLastT = now;
   handleCode(code);
 }
 
-function toggleModalScan(){
-  if(_modalScanOn){ _stopModalScan(); return; }
-  _modalScanOn=true;
-  const wrap=document.getElementById('modal-scan-wrap');
-  const btn=document.getElementById('modal-scan-btn');
-  if(wrap) wrap.style.display='block';
-  if(btn){btn.style.background='var(--accent)';btn.style.borderColor='var(--accent)';btn.textContent='⏳';btn.disabled=true;}
+function toggleModalScan() {
+  if (_modalScanOn) { _stopModalScan(); return; }
+  _modalScanOn = true;
+  const wrap = document.getElementById('modal-scan-wrap');
+  const btn  = document.getElementById('modal-scan-btn');
+  if (wrap) wrap.style.display = 'block';
+  if (btn)  { btn.style.background = 'var(--accent)'; btn.style.borderColor = 'var(--accent)'; btn.textContent = '⏳'; btn.disabled = true; }
 
-  setTimeout(async()=>{
-    if(!_modalScanOn) return;
-    const video=document.getElementById('modal-video');
-    const btn2=document.getElementById('modal-scan-btn');
-    if(!video){_modalScanOn=false;return;}
-    // Reset any existing modal reader first
-    const r=_resetReader(_modalReader,_modalStream);
-    _modalReader=r.reader; _modalStream=r.stream;
-    await new Promise(res=>setTimeout(res,200));
-    try{
-      _modalStream=await _getStream();
-      await _playVideo(video,_modalStream);
-      if(btn2){btn2.textContent='⏹';btn2.disabled=false;}
-      _modalReader=new ZXing.BrowserMultiFormatReader();
-      let last='',lastT=0;
-      _modalReader.decodeFromStream(_modalStream, video, (result)=>{
-        if(!result||!_modalScanOn) return;
-        const code=result.getText();
-        const now=Date.now();
-        if(code===last&&now-lastT<2500) return;
-        last=code; lastT=now;
+  setTimeout(async () => {
+    if (!_modalScanOn) return;
+    const video = document.getElementById('modal-video');
+    const btn2  = document.getElementById('modal-scan-btn');
+    if (!video) { _modalScanOn = false; return; }
+
+    const r = _resetReader(_modalReader, _modalStream);
+    _modalReader = r.reader; _modalStream = r.stream;
+    await new Promise(res => setTimeout(res, 200));
+
+    try {
+      _modalStream = await _getStream();
+      await _playVideo(video, _modalStream);
+      if (btn2) { btn2.textContent = '⏹'; btn2.disabled = false; }
+
+      _modalReader = _makeReader();
+      let last = '', lastT = 0;
+      _modalReader.decodeFromStream(_modalStream, video, (result) => {
+        if (!result || !_modalScanOn) return;
+        const code = result.getText();
+        const now = Date.now();
+        if (code === last && now - lastT < 2500) return;
+        last = code; lastT = now;
+
         _stopModalScan();
-        const inp=document.getElementById('mp-code');
-        const w=document.getElementById('modal-scan-wrap');
-        const b=document.getElementById('modal-scan-btn');
-        if(inp) inp.value=code;
-        if(w)   w.style.display='none';
-        if(b)   {b.style.background='var(--green)';b.style.borderColor='var(--green)';b.textContent='✓';b.disabled=false;}
+        const inp = document.getElementById('mp-code');
+        const w   = document.getElementById('modal-scan-wrap');
+        const b   = document.getElementById('modal-scan-btn');
+        if (inp) inp.value = code;
+        if (w)   w.style.display = 'none';
+        if (b)   { b.style.background = 'var(--green)'; b.style.borderColor = 'var(--green)'; b.textContent = '✓'; b.disabled = false; }
         toast('Código lido!');
-        setTimeout(()=>document.getElementById('mp-name')?.focus(),150);
+        setTimeout(() => document.getElementById('mp-name')?.focus(), 150);
       });
-    }catch(err){
-      _modalScanOn=false;
-      if(btn2){btn2.style.background='var(--bg3)';btn2.style.borderColor='var(--border)';btn2.textContent='📷';btn2.disabled=false;}
-      toast('Câmera indisponível','err');
+    } catch(err) {
+      _modalScanOn = false;
+      if (btn2) { btn2.style.background = 'var(--bg3)'; btn2.style.borderColor = 'var(--border)'; btn2.textContent = '📷'; btn2.disabled = false; }
+      toast('Câmera indisponível', 'err');
     }
-  },300);
+  }, 300);
 }
 
-function _stopModalScan(){
-  if(!_modalScanOn&&!_modalReader&&!_modalStream) return;
-  _modalScanOn=false;
-  const r=_resetReader(_modalReader,_modalStream);
-  _modalReader=r.reader; _modalStream=r.stream;
-  const wrap=document.getElementById('modal-scan-wrap');
-  const btn=document.getElementById('modal-scan-btn');
-  if(wrap) wrap.style.display='none';
-  if(btn){btn.style.background='var(--bg3)';btn.style.borderColor='var(--border)';btn.textContent='📷';btn.disabled=false;}
+function _stopModalScan() {
+  _modalScanOn = false;
+  const r = _resetReader(_modalReader, _modalStream);
+  _modalReader = r.reader; _modalStream = r.stream;
+  const wrap = document.getElementById('modal-scan-wrap');
+  const btn  = document.getElementById('modal-scan-btn');
+  if (wrap) wrap.style.display = 'none';
+  if (btn)  { btn.style.background = 'var(--bg3)'; btn.style.borderColor = 'var(--border)'; btn.textContent = '📷'; btn.disabled = false; }
 }
 
 // ══════════════════════════════════════════════════════════
 // TABS
 // ══════════════════════════════════════════════════════════
-function showTab(tab){
-  S.tab=tab;
-  ['scan','clients','products','orders','settings'].forEach(t=>
-    document.getElementById('nav-'+t).classList.toggle('active',t===tab));
+function showTab(tab) {
+  S.tab = tab;
+  ['scan','clients','products','orders','settings'].forEach(t =>
+    document.getElementById('nav-' + t).classList.toggle('active', t === tab));
   stopMainScan();
-  document.getElementById('total-slot').innerHTML='';
-  if     (tab==='scan')     renderScan();
-  else if(tab==='clients')  renderClients();
-  else if(tab==='products') renderProducts();
-  else if(tab==='orders')   renderOrders();
-  else if(tab==='settings') renderSettings();
+  document.getElementById('total-slot').innerHTML = '';
+  if      (tab === 'scan')     renderScan();
+  else if (tab === 'clients')  renderClients();
+  else if (tab === 'products') renderProducts();
+  else if (tab === 'orders')   renderOrders();
+  else if (tab === 'settings') renderSettings();
 }
 
 // ══════════════════════════════════════════════════════════
 // SCAN TAB
 // ══════════════════════════════════════════════════════════
-function renderScan(){
-  const client=S.activeClient?S.clients[S.activeClient]:null;
-  const order=S.activeClient?S.orders[S.activeClient]:null;
-  const items=order?Object.values(order.items||{}):[];
-  const status=order?.status||'open'; // 'open' | 'waiting'
+function renderScan() {
+  const client = S.activeClient ? S.clients[S.activeClient] : null;
+  const order  = S.activeClient ? S.orders[S.activeClient]  : null;
+  const items  = order ? Object.values(order.items || {}) : [];
+  const status = order ? (order.status || 'open') : 'open';
 
-  const clientBanner=client
-    ?`<div class="client-card" onclick="showClientPicker()" style="margin-bottom:4px;">
+  const clientBanner = client
+    ? `<div class="client-card" onclick="showClientPicker()" style="margin-bottom:4px;">
         <div class="avatar" style="width:44px;height:44px;font-size:16px;background:var(--accent);">${initials(client.name)}</div>
         <div style="flex:1;"><div style="font-size:15px;font-weight:600;">${client.name}</div>
-        <div style="font-size:12px;color:var(--text2);">${client.phone||'Sem telefone'}</div></div>
+        <div style="font-size:12px;color:var(--text2);">${client.phone || 'Sem telefone'}</div></div>
         <div style="font-size:20px;color:var(--text2);">›</div>
       </div>`
-    :`<button class="btn btn-outline" onclick="showClientPicker()" style="margin-bottom:4px;">👤 Selecionar / Novo Cliente</button>`;
+    : `<button class="btn btn-outline" onclick="showClientPicker()" style="margin-bottom:4px;">👤 Selecionar / Novo Cliente</button>`;
 
-  // Status banner when order exists
-  const statusBanner = order&&items.length ? (
-    status==='waiting'
-      ?`<div class="status-banner status-waiting">⏳ Aguardando devolução — ainda pode adicionar ou devolver itens</div>`
-      :''
-  ):'';
+  const statusBanner = (order && items.length && status === 'waiting')
+    ? `<div class="status-banner status-waiting">⏳ Aguardando devolução — pode adicionar ou devolver itens</div>`
+    : '';
 
-  const itemsHtml=items.length?`<div class="card">
+  const itemsHtml = items.length ? `<div class="card">
     <div class="card-title">Itens no pedido</div>
-    ${items.map(i=>`<div class="item-row">
+    ${items.map(i => `<div class="item-row">
       <div class="item-icon">📦</div>
       <div class="item-info"><div class="item-name">${i.name}</div><div class="item-sub">${i.code}</div></div>
       <div class="qty-ctrl">
@@ -491,30 +557,29 @@ function renderScan(){
         <span class="qty-num">${i.qty}</span>
         <button class="qty-btn" onclick="changeQty('${i.code}',1)">+</button>
       </div>
-      <div class="item-price">${fmt(i.price*i.qty)}</div>
+      <div class="item-price">${fmt(i.price * i.qty)}</div>
     </div>`).join('')}
-  </div>`:'';
+  </div>` : '';
 
-  // Action buttons depend on status
-  let actionBtns='';
-  if(client&&items.length){
-    if(status==='open'){
-      actionBtns=`<button class="btn btn-amber" style="margin-bottom:10px;" onclick="setOrderWaiting()">⏳ Finalizar pedido (aguardar devolução)</button>`;
-    } else if(status==='waiting'){
-      actionBtns=`<button class="btn btn-green" style="margin-bottom:10px;" onclick="showPaymentModal()">💰 Registrar pagamento</button>
+  let actionBtns = '';
+  if (client && items.length) {
+    if (status === 'open') {
+      actionBtns = `<button class="btn btn-amber" style="margin-bottom:10px;" onclick="setOrderWaiting()">⏳ Finalizar pedido (aguardar devolução)</button>`;
+    } else if (status === 'waiting') {
+      actionBtns = `<button class="btn btn-green" style="margin-bottom:10px;" onclick="showPaymentModal()">💰 Registrar pagamento</button>
       <button class="btn btn-outline" style="margin-bottom:10px;" onclick="reopenOrder()">↩ Reabrir pedido</button>`;
     }
   }
 
-  document.getElementById('content').innerHTML=`
+  document.getElementById('content').innerHTML = `
     <div style="margin-bottom:12px;">${clientBanner}</div>
     <div class="mode-bar">
-      <button class="mode-opt ${S.scanMode==='sale'?'active':''}" onclick="setScanMode('sale')">🛒 Venda</button>
-      <button class="mode-opt ${S.scanMode==='return'?'active':''}" onclick="setScanMode('return')">↩ Devolução</button>
+      <button class="mode-opt ${S.scanMode === 'sale' ? 'active' : ''}" onclick="setScanMode('sale')">🛒 Venda</button>
+      <button class="mode-opt ${S.scanMode === 'return' ? 'active' : ''}" onclick="setScanMode('return')">↩ Devolução</button>
     </div>
     <div class="scan-box">
       <video id="main-video" playsinline webkit-playsinline muted autoplay></video>
-      <div class="scan-overlay"><div class="scan-frame">
+      <div class="scan-overlay"><div class="scan-frame" style="width:80%;height:35%;">
         <span class="sc tl"></span><span class="sc tr"></span>
         <span class="sc bl"></span><span class="sc br"></span>
         <div class="scan-line"></div>
@@ -526,8 +591,8 @@ function renderScan(){
         <button class="btn btn-primary" id="cam-btn" style="width:auto;padding:12px 24px;" onclick="requestCameraPermission()">Permitir câmera</button>
       </div>
     </div>
-    <div style="text-align:center;font-size:13px;color:var(--text2);margin-bottom:12px;">
-      ${S.scanMode==='sale'?'Aponte para o código do produto':'↩ Aponte para o item a devolver'}
+    <div style="text-align:center;font-size:12px;color:var(--text2);margin-bottom:10px;">
+      📏 Mantenha o código centralizado · distância ~15cm
     </div>
     <div class="manual-bar">
       <input class="form-input" id="manual-code" placeholder="Ou digite o código…" inputmode="numeric" autocomplete="off"/>
@@ -539,104 +604,103 @@ function renderScan(){
     <div style="height:16px;"></div>
   `;
 
-  document.getElementById('header-sub').textContent=
-    client?`Cliente: ${client.name}`:'Selecione um cliente para iniciar';
+  document.getElementById('header-sub').textContent =
+    client ? `Cliente: ${client.name}` : 'Selecione um cliente para iniciar';
 
-  document.getElementById('manual-code').addEventListener('keydown',e=>{
-    if(e.key==='Enter'){e.preventDefault();submitManualCode();}
+  document.getElementById('manual-code').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); submitManualCode(); }
   });
 
-  if(order&&items.length){
-    document.getElementById('total-slot').innerHTML=
+  if (order && items.length) {
+    document.getElementById('total-slot').innerHTML =
       `<div class="total-bar"><span style="font-size:14px;color:var(--text2);">Total</span>
        <span style="font-size:22px;font-weight:800;color:var(--green);">${fmt(order.total)}</span></div>`;
   }
 
-  requestAnimationFrame(()=>startMainScan());
+  requestAnimationFrame(() => startMainScan());
 }
 
-function submitManualCode(){
-  const inp=document.getElementById('manual-code');
-  const code=(inp?.value||'').trim();
-  if(!code){toast('Digite um código','err');return;}
-  inp.value=''; handleCode(code);
-}
-function setScanMode(m){S.scanMode=m; renderScan();}
-
-function handleCode(code){
-  code=code.trim(); if(!code) return;
-  const product=S.products[code];
-  if(!product){showRegisterProduct(code); return;}
-  if(S.scanMode==='sale') handleSaleScan(code,product);
-  else handleReturnScan(code,product);
+function submitManualCode() {
+  const inp  = document.getElementById('manual-code');
+  const code = (inp?.value || '').trim();
+  if (!code) { toast('Digite um código', 'err'); return; }
+  inp.value = '';
+  handleCode(code);
 }
 
-function changeQty(code,delta){
-  const order=S.orders[S.activeClient]; if(!order||!order.items[code]) return;
-  order.items[code].qty+=delta;
-  order.total=Math.max(0,(order.total||0)+delta*order.items[code].price);
-  if(order.items[code].qty<=0) delete order.items[code];
+function setScanMode(m) { S.scanMode = m; renderScan(); }
+
+function handleCode(code) {
+  code = code.trim();
+  if (!code) return;
+  const product = S.products[code];
+  if (!product) { showRegisterProduct(code); return; }
+  if (S.scanMode === 'sale') handleSaleScan(code, product);
+  else handleReturnScan(code, product);
+}
+
+function changeQty(code, delta) {
+  const order = S.orders[S.activeClient];
+  if (!order || !order.items[code]) return;
+  order.items[code].qty += delta;
+  order.total = Math.max(0, (order.total || 0) + delta * order.items[code].price);
+  if (order.items[code].qty <= 0) delete order.items[code];
   save(); renderScan();
 }
 
 // ══════════════════════════════════════════════════════════
-// ORDER STATUS FLOW
-// open → waiting → paid (closed)
-// Can add/return in both open and waiting
+// ORDER FLOW: open → waiting → paid
 // ══════════════════════════════════════════════════════════
-function handleSaleScan(code,product){
-  if(!S.activeClient){showSelectOrCreateClient(code,product);return;}
-  addToOrder(code,product);
+function handleSaleScan(code, product) {
+  if (!S.activeClient) { showSelectOrCreateClient(code, product); return; }
+  addToOrder(code, product);
 }
-function handleReturnScan(code,product){
-  if(!S.activeClient){toast('Selecione um cliente','err');return;}
-  const order=S.orders[S.activeClient];
-  if(!order||!order.items[code]||order.items[code].qty<=0){
-    toast('Item não está no pedido deste cliente','err');return;
+
+function handleReturnScan(code, product) {
+  if (!S.activeClient) { toast('Selecione um cliente', 'err'); return; }
+  const order = S.orders[S.activeClient];
+  if (!order || !order.items[code] || order.items[code].qty <= 0) {
+    toast('Item não está no pedido deste cliente', 'err'); return;
   }
   order.items[code].qty--;
-  order.total=Math.max(0,(order.total||0)-product.price);
-  if(order.items[code].qty===0) delete order.items[code];
+  order.total = Math.max(0, (order.total || 0) - product.price);
+  if (order.items[code].qty === 0) delete order.items[code];
   save(); toast(`↩ Devolvido: ${product.name}`); renderScan();
 }
-function addToOrder(code,product){
-  if(!S.orders[S.activeClient])
-    S.orders[S.activeClient]={clientId:S.activeClient,items:{},total:0,status:'open'};
-  const order=S.orders[S.activeClient];
-  if(order.items[code]) order.items[code].qty++;
-  else order.items[code]={code,name:product.name,price:product.price,qty:1};
-  order.total=(order.total||0)+product.price;
+
+function addToOrder(code, product) {
+  if (!S.orders[S.activeClient])
+    S.orders[S.activeClient] = { clientId: S.activeClient, items: {}, total: 0, status: 'open' };
+  const order = S.orders[S.activeClient];
+  if (order.items[code]) order.items[code].qty++;
+  else order.items[code] = { code, name: product.name, price: product.price, qty: 1 };
+  order.total = (order.total || 0) + product.price;
   save(); toast(`✓ ${product.name}`); renderScan();
 }
 
-// Finalizar pedido = move to "waiting" (aguardando devolução)
-function setOrderWaiting(){
-  const order=S.orders[S.activeClient]; if(!order) return;
-  order.status='waiting';
-  save(); toast('⏳ Pedido finalizado — aguardando devolução'); renderScan();
+function setOrderWaiting() {
+  const order = S.orders[S.activeClient]; if (!order) return;
+  order.status = 'waiting'; save(); toast('⏳ Aguardando devolução'); renderScan();
 }
 
-// Reopen order back to "open"
-function reopenOrder(){
-  const order=S.orders[S.activeClient]; if(!order) return;
-  order.status='open';
-  save(); toast('Pedido reaberto'); renderScan();
+function reopenOrder() {
+  const order = S.orders[S.activeClient]; if (!order) return;
+  order.status = 'open'; save(); toast('Pedido reaberto'); renderScan();
 }
 
-// Show payment confirmation modal
-function showPaymentModal(){
-  const client=S.clients[S.activeClient];
-  const order=S.orders[S.activeClient];
-  if(!order) return;
-  const items=Object.values(order.items||{});
+function showPaymentModal() {
+  const client = S.clients[S.activeClient];
+  const order  = S.orders[S.activeClient];
+  if (!order) return;
+  const items = Object.values(order.items || {});
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title">💰 Registrar pagamento</div>
-    <div class="modal-sub">${client.name}${client.phone?' · '+client.phone:''}</div>
+    <div class="modal-sub">${client.name}${client.phone ? ' · ' + client.phone : ''}</div>
     <div class="card" style="margin-bottom:16px;">
-      ${items.map(i=>`<div class="item-row">
+      ${items.map(i => `<div class="item-row">
         <div class="item-info"><div class="item-name">${i.name}</div><div class="item-sub">Qtd: ${i.qty}</div></div>
-        <div class="item-price">${fmt(i.price*i.qty)}</div>
+        <div class="item-price">${fmt(i.price * i.qty)}</div>
       </div>`).join('')}
       <div class="divider"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -645,32 +709,31 @@ function showPaymentModal(){
       </div>
     </div>
     <div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:var(--radius-sm);padding:12px;font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6;">
-      ✅ Após confirmar, o pedido será registrado como <b>PAGO</b> e não poderá ser editado.
+      ✅ Após confirmar, o pedido será registrado como PAGO e não poderá ser editado.
     </div>
     <button class="btn btn-green" style="margin-bottom:10px;" onclick="confirmPayment('${S.activeClient}')">✅ Confirmar pagamento</button>
     <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
   `);
 }
 
-function confirmPayment(clientId){
-  const client=S.clients[clientId];
-  const order=S.orders[clientId]; if(!order) return;
+function confirmPayment(clientId) {
+  const client = S.clients[clientId];
+  const order  = S.orders[clientId]; if (!order) return;
   S.closed.unshift({
-    clientId, clientName:client.name, clientPhone:client.phone||'',
-    items:{...order.items}, total:order.total,
-    closedAt:new Date().toISOString()
+    clientId, clientName: client.name, clientPhone: client.phone || '',
+    items: { ...order.items }, total: order.total,
+    closedAt: new Date().toISOString()
   });
   delete S.orders[clientId];
-  if(S.activeClient===clientId) S.activeClient=null;
-  save(); closeModal();
-  toast(`✅ Pagamento de ${client.name} registrado!`);
+  if (S.activeClient === clientId) S.activeClient = null;
+  save(); closeModal(); toast(`✅ Pagamento de ${client.name} registrado!`);
   showTab('orders');
 }
 
 // ══════════════════════════════════════════════════════════
-// REGISTER PRODUCT — after scan, restart main scanner
+// REGISTER PRODUCT — restart scanner after modal closes
 // ══════════════════════════════════════════════════════════
-function showRegisterProduct(code){
+function showRegisterProduct(code) {
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title">Produto não cadastrado</div>
@@ -684,92 +747,100 @@ function showRegisterProduct(code){
       <div class="form-group"><button class="btn btn-primary" onclick="saveProductAndContinue('${code}')">Cadastrar</button></div>
     </div>
   `);
-  setTimeout(()=>document.getElementById('rp-name')?.focus(),100);
+  setTimeout(() => document.getElementById('rp-name')?.focus(), 100);
 }
 
-function cancelRegister(){
+function cancelRegister() {
   closeModal();
-  // Restart main scanner after closing modal
-  setTimeout(()=>startMainScan(), 400);
+  setTimeout(() => startMainScan(), 400);
 }
 
-function saveProductAndContinue(code){
-  const name=document.getElementById('rp-name').value.trim();
-  const price=parseFloat(document.getElementById('rp-price').value);
-  if(!name||isNaN(price)||price<=0){toast('Preencha todos os campos','err');return;}
-  S.products[code]={code,name,price};
-  saveLocal();
+function saveProductAndContinue(code) {
+  const name  = document.getElementById('rp-name').value.trim();
+  const price = parseFloat(document.getElementById('rp-price').value);
+  if (!name || isNaN(price) || price <= 0) { toast('Preencha todos os campos', 'err'); return; }
+  S.products[code] = { code, name, price };
+  save();
   closeModal();
   toast('✓ Produto cadastrado!');
-  // After registering, try to add to order
-  setTimeout(()=>{
+  // Restart scanner then process the code as if scanned again
+  setTimeout(() => {
     startMainScan();
-    handleCode(code); // will now find the product and add to order
-  }, 500);
+    setTimeout(() => handleCode(code), 600);
+  }, 400);
 }
 
 // ══════════════════════════════════════════════════════════
 // CLIENT PICKER
 // ══════════════════════════════════════════════════════════
-function showClientPicker(){
-  const clients=Object.values(S.clients);
+function showClientPicker() {
+  const clients = Object.values(S.clients);
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title">Selecionar cliente</div>
     <button class="btn btn-primary" style="margin-bottom:12px;" onclick="closeModal();showNewClientForm()">+ Novo Cliente</button>
-    ${clients.length?`<div class="search-wrap"><span class="search-icon">🔍</span>
-      <input class="form-input" id="picker-search" placeholder="Buscar…" oninput="filterPickerClients(this.value)"/></div>
-    <div id="picker-list">${renderPickerList(clients,'')}</div>`
-    :`<div class="empty" style="padding:24px;"><p>Nenhum cliente</p></div>`}
+    ${clients.length
+      ? `<div class="search-wrap"><span class="search-icon">🔍</span>
+         <input class="form-input" id="picker-search" placeholder="Buscar…" oninput="filterPickerClients(this.value)"/></div>
+         <div id="picker-list">${renderPickerList(clients, '')}</div>`
+      : `<div class="empty" style="padding:24px;"><p>Nenhum cliente</p></div>`}
   `);
 }
-function renderPickerList(clients,q){
-  const f=clients.filter(c=>(c.name||'').toLowerCase().includes(q.toLowerCase())||(c.phone||'').includes(q));
-  if(!f.length) return `<div style="text-align:center;padding:16px;color:var(--text2);font-size:14px;">Nenhum resultado</div>`;
-  return f.map(c=>{
-    const o=S.orders[c.id];
-    const st=o?.status;
+
+function renderPickerList(clients, q) {
+  const f = clients.filter(c => (c.name || '').toLowerCase().includes(q.toLowerCase()) || (c.phone || '').includes(q));
+  if (!f.length) return `<div style="text-align:center;padding:16px;color:var(--text2);font-size:14px;">Nenhum resultado</div>`;
+  return f.map(c => {
+    const o  = S.orders[c.id];
+    const st = o?.status;
     return `<div class="client-card" onclick="selectClient('${c.id}')">
       <div class="avatar" style="width:44px;height:44px;font-size:16px;background:var(--accent);">${initials(c.name)}</div>
       <div style="flex:1;"><div style="font-size:15px;font-weight:600;">${c.name}</div>
-      <div style="font-size:12px;color:var(--text2);">${c.phone||'Sem telefone'}</div>
-      ${o&&Object.keys(o.items||{}).length?`<div style="font-size:12px;color:${st==='waiting'?'var(--amber)':'var(--green)'};margin-top:2px;">${fmt(o.total)} · ${st==='waiting'?'⏳ Aguardando':'Em aberto'}</div>`:''}</div>
+      <div style="font-size:12px;color:var(--text2);">${c.phone || 'Sem telefone'}</div>
+      ${o && Object.keys(o.items || {}).length
+        ? `<div style="font-size:12px;color:${st === 'waiting' ? 'var(--amber)' : 'var(--green)'};margin-top:2px;">${fmt(o.total)} · ${st === 'waiting' ? '⏳ Aguardando' : 'Em aberto'}</div>`
+        : ''}</div>
       <div style="font-size:20px;color:var(--text2);">›</div>
     </div>`;
   }).join('');
 }
-function filterPickerClients(q){
-  const l=document.getElementById('picker-list');
-  if(l) l.innerHTML=renderPickerList(Object.values(S.clients),q);
+
+function filterPickerClients(q) {
+  const l = document.getElementById('picker-list');
+  if (l) l.innerHTML = renderPickerList(Object.values(S.clients), q);
 }
-function selectClient(id){
-  S.activeClient=id; S.scanMode='sale'; closeModal();
-  // Restart scanner after modal closes
-  setTimeout(()=>renderScan(), 100);
+
+function selectClient(id) {
+  S.activeClient = id; S.scanMode = 'sale';
+  closeModal();
+  setTimeout(() => renderScan(), 100);
 }
-function showSelectOrCreateClient(code,product){
-  const clients=Object.values(S.clients);
+
+function showSelectOrCreateClient(code, product) {
+  const clients = Object.values(S.clients);
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title">Produto detectado!</div>
     <div class="modal-sub">📦 ${product.name} · ${fmt(product.price)}<br>Para qual cliente?</div>
-    ${clients.map(c=>`<div class="client-card" onclick="selectClientAndAdd('${c.id}','${code}')">
+    ${clients.map(c => `<div class="client-card" onclick="selectClientAndAdd('${c.id}','${code}')">
       <div class="avatar" style="width:44px;height:44px;font-size:16px;background:var(--accent);">${initials(c.name)}</div>
       <div><div style="font-size:15px;font-weight:600;">${c.name}</div>
-      <div style="font-size:12px;color:var(--text2);">${c.phone||'Sem telefone'}</div></div>
+      <div style="font-size:12px;color:var(--text2);">${c.phone || 'Sem telefone'}</div></div>
     </div>`).join('')}
     <button class="btn btn-primary" style="margin-top:8px;" onclick="closeModal();showNewClientFormThen('${code}')">+ Novo Cliente</button>
   `);
 }
-function selectClientAndAdd(clientId,code){
-  S.activeClient=clientId; closeModal();
-  setTimeout(()=>{ startMainScan(); addToOrder(code,S.products[code]); }, 400);
+
+function selectClientAndAdd(clientId, code) {
+  S.activeClient = clientId;
+  closeModal();
+  setTimeout(() => { startMainScan(); addToOrder(code, S.products[code]); }, 400);
 }
 
 // ══════════════════════════════════════════════════════════
 // CLIENT FORMS
 // ══════════════════════════════════════════════════════════
-function _clientModal(title,nameDef,phoneDef,btns){
+function _clientModal(title, nameDef, phoneDef, btns) {
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title">${title}</div>
@@ -780,117 +851,135 @@ function _clientModal(title,nameDef,phoneDef,btns){
       <div class="form-hint">Pode deixar em branco</div></div>
     ${btns}
   `);
-  setTimeout(()=>document.getElementById('cf-name')?.focus(),100);
+  setTimeout(() => document.getElementById('cf-name')?.focus(), 100);
 }
-function _readCF(){return{name:(document.getElementById('cf-name')?.value||'').trim(),phone:(document.getElementById('cf-phone')?.value||'').trim()};}
-function showNewClientForm(redirect){
-  _clientModal('Novo Cliente','','',`<div class="row">
+
+function _readCF() {
+  return {
+    name:  (document.getElementById('cf-name')?.value  || '').trim(),
+    phone: (document.getElementById('cf-phone')?.value || '').trim()
+  };
+}
+
+function showNewClientForm(redirect) {
+  _clientModal('Novo Cliente', '', '', `<div class="row">
     <div class="form-group"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button></div>
-    <div class="form-group"><button class="btn btn-primary" onclick="saveNewClient('${redirect||''}')">Salvar</button></div>
+    <div class="form-group"><button class="btn btn-primary" onclick="saveNewClient('${redirect || ''}')">Salvar</button></div>
   </div>`);
 }
-function showNewClientFormThen(code){
-  _clientModal('Novo Cliente','','',`<div class="row">
+
+function showNewClientFormThen(code) {
+  _clientModal('Novo Cliente', '', '', `<div class="row">
     <div class="form-group"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button></div>
     <div class="form-group"><button class="btn btn-primary" onclick="saveNewClientAndAdd('${code}')">Salvar e Adicionar</button></div>
   </div>`);
 }
-function saveNewClient(redirect){
-  const{name,phone}=_readCF();
-  if(!name){toast('Preencha o nome','err');return;}
-  const id=phone?phone.replace(/\D/g,''):'c_'+Date.now();
-  S.clients[id]={id,name,phone};
+
+function saveNewClient(redirect) {
+  const { name, phone } = _readCF();
+  if (!name) { toast('Preencha o nome', 'err'); return; }
+  const id = phone ? phone.replace(/\D/g, '') : 'c_' + Date.now();
+  S.clients[id] = { id, name, phone };
   save(); closeModal(); toast(`Cliente ${name} cadastrado!`);
-  if(redirect) showTab(redirect); else setTimeout(()=>renderScan(),100);
+  if (redirect) showTab(redirect);
+  else setTimeout(() => renderScan(), 100);
 }
-function saveNewClientAndAdd(code){
-  const{name,phone}=_readCF();
-  if(!name){toast('Preencha o nome','err');return;}
-  const id=phone?phone.replace(/\D/g,''):'c_'+Date.now();
-  S.clients[id]={id,name,phone}; S.activeClient=id;
+
+function saveNewClientAndAdd(code) {
+  const { name, phone } = _readCF();
+  if (!name) { toast('Preencha o nome', 'err'); return; }
+  const id = phone ? phone.replace(/\D/g, '') : 'c_' + Date.now();
+  S.clients[id] = { id, name, phone };
+  S.activeClient = id;
   save(); closeModal();
-  setTimeout(()=>{ startMainScan(); addToOrder(code,S.products[code]); }, 400);
+  setTimeout(() => { startMainScan(); addToOrder(code, S.products[code]); }, 400);
 }
-function showEditClient(id){
-  const c=S.clients[id];
-  _clientModal('Editar Cliente',c.name,c.phone||'',`<div class="row">
+
+function showEditClient(id) {
+  const c = S.clients[id];
+  _clientModal('Editar Cliente', c.name, c.phone || '', `<div class="row">
     <div class="form-group"><button class="btn btn-outline" onclick="showClientDetail('${id}')">Cancelar</button></div>
     <div class="form-group"><button class="btn btn-primary" onclick="updateClient('${id}')">Salvar</button></div>
   </div>`);
 }
-function updateClient(id){
-  const{name,phone}=_readCF();
-  if(!name){toast('Preencha o nome','err');return;}
-  S.clients[id]={...S.clients[id],name,phone};
+
+function updateClient(id) {
+  const { name, phone } = _readCF();
+  if (!name) { toast('Preencha o nome', 'err'); return; }
+  S.clients[id] = { ...S.clients[id], name, phone };
   save(); closeModal(); renderClients(); toast('Cliente atualizado!');
 }
-function deleteClient(id){
-  if(!confirm('Excluir este cliente e seu pedido?')) return;
+
+function deleteClient(id) {
+  if (!confirm('Excluir este cliente e seu pedido?')) return;
   delete S.clients[id]; delete S.orders[id];
-  if(S.activeClient===id) S.activeClient=null;
+  if (S.activeClient === id) S.activeClient = null;
   save(); closeModal(); renderClients(); toast('Cliente excluído');
 }
 
 // ══════════════════════════════════════════════════════════
 // CLIENTS TAB
 // ══════════════════════════════════════════════════════════
-function renderClients(){
-  document.getElementById('content').innerHTML=`
+function renderClients() {
+  document.getElementById('content').innerHTML = `
     <button class="btn btn-primary" style="margin-bottom:12px;" onclick="showNewClientForm('clients')">+ Novo Cliente</button>
     <div class="search-wrap"><span class="search-icon">🔍</span>
       <input class="form-input" id="client-search" placeholder="Buscar por nome ou telefone…" oninput="filterClients(this.value)"/></div>
     <div id="client-list"></div><div style="height:12px;"></div>`;
   filterClients('');
 }
-function filterClients(q){
-  const list=document.getElementById('client-list'); if(!list) return;
-  const all=Object.values(S.clients);
-  const f=q?all.filter(c=>(c.name||'').toLowerCase().includes(q.toLowerCase())||(c.phone||'').includes(q)):all;
-  if(!f.length){list.innerHTML=`<div class="empty"><div class="icon">👥</div><p>${q?'Nenhum resultado':'Nenhum cliente'}</p></div>`;return;}
-  list.innerHTML=f.map(c=>{
-    const o=S.orders[c.id];
-    const count=o?Object.values(o.items||{}).reduce((s,i)=>s+i.qty,0):0;
-    const st=o?.status;
+
+function filterClients(q) {
+  const list = document.getElementById('client-list'); if (!list) return;
+  const all  = Object.values(S.clients);
+  const f    = q ? all.filter(c => (c.name || '').toLowerCase().includes(q.toLowerCase()) || (c.phone || '').includes(q)) : all;
+  if (!f.length) { list.innerHTML = `<div class="empty"><div class="icon">👥</div><p>${q ? 'Nenhum resultado' : 'Nenhum cliente'}</p></div>`; return; }
+  list.innerHTML = f.map(c => {
+    const o     = S.orders[c.id];
+    const count = o ? Object.values(o.items || {}).reduce((s, i) => s + i.qty, 0) : 0;
+    const st    = o?.status;
     return `<div class="client-card" onclick="showClientDetail('${c.id}')">
       <div class="avatar" style="width:44px;height:44px;font-size:16px;background:var(--accent);">${initials(c.name)}</div>
       <div style="flex:1;"><div style="font-size:15px;font-weight:600;">${c.name}</div>
-      <div style="font-size:12px;color:var(--text2);">${c.phone||'Sem telefone'}</div>
-      ${count>0?`<div style="font-size:12px;color:${st==='waiting'?'var(--amber)':'var(--green)'};margin-top:2px;">${count} item(s) · ${fmt(o.total)} · ${st==='waiting'?'⏳ Aguardando':'Em aberto'}</div>`:''}</div>
+      <div style="font-size:12px;color:var(--text2);">${c.phone || 'Sem telefone'}</div>
+      ${count > 0 ? `<div style="font-size:12px;color:${st === 'waiting' ? 'var(--amber)' : 'var(--green)'};margin-top:2px;">${count} item(s) · ${fmt(o.total)} · ${st === 'waiting' ? '⏳ Aguardando' : 'Em aberto'}</div>` : ''}</div>
       <div style="font-size:20px;color:var(--text2);">›</div>
     </div>`;
   }).join('');
 }
-function showClientDetail(id){
-  const c=S.clients[id]; const order=S.orders[id];
-  const items=order?Object.values(order.items||{}):[];
-  const st=order?.status||'open';
+
+function showClientDetail(id) {
+  const c     = S.clients[id];
+  const order = S.orders[id];
+  const items = order ? Object.values(order.items || {}) : [];
+  const st    = order?.status || 'open';
   showModal(`
     <div class="modal-handle"></div>
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
       <div class="avatar" style="width:52px;height:52px;font-size:20px;background:var(--accent);">${initials(c.name)}</div>
       <div><div class="modal-title" style="margin-bottom:2px;">${c.name}</div>
-      <div style="font-size:14px;color:var(--text2);">${c.phone?'📱 '+c.phone:'Sem telefone'}</div></div>
+      <div style="font-size:14px;color:var(--text2);">${c.phone ? '📱 ' + c.phone : 'Sem telefone'}</div></div>
     </div>
     <button class="btn btn-outline" style="margin-bottom:10px;" onclick="showEditClient('${id}')">✏️ Editar dados</button>
-    ${items.length?`
-    ${st==='waiting'?`<div class="status-banner status-waiting" style="margin-bottom:12px;">⏳ Aguardando devolução</div>`:''}
-    <div class="card" style="margin-bottom:12px;">
-      <div class="card-title">Pedido</div>
-      ${items.map(i=>`<div class="item-row">
-        <div class="item-info"><div class="item-name">${i.name}</div><div class="item-sub">Qtd: ${i.qty}</div></div>
-        <div class="item-price">${fmt(i.price*i.qty)}</div>
-      </div>`).join('')}
-      <div class="divider"></div>
-      <div style="display:flex;justify-content:space-between;">
-        <span style="font-weight:600;">Total</span>
-        <span style="color:var(--green);font-weight:700;font-size:18px;">${fmt(order.total)}</span>
+    ${items.length ? `
+      ${st === 'waiting' ? `<div class="status-banner status-waiting" style="margin-bottom:12px;">⏳ Aguardando devolução</div>` : ''}
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-title">Pedido</div>
+        ${items.map(i => `<div class="item-row">
+          <div class="item-info"><div class="item-name">${i.name}</div><div class="item-sub">Qtd: ${i.qty}</div></div>
+          <div class="item-price">${fmt(i.price * i.qty)}</div>
+        </div>`).join('')}
+        <div class="divider"></div>
+        <div style="display:flex;justify-content:space-between;">
+          <span style="font-weight:600;">Total</span>
+          <span style="color:var(--green);font-weight:700;font-size:18px;">${fmt(order.total)}</span>
+        </div>
       </div>
-    </div>
-    <button class="btn btn-primary" style="margin-bottom:10px;" onclick="S.activeClient='${id}';S.scanMode='sale';closeModal();setTimeout(()=>renderScan(),100)">🛒 Adicionar itens / Devolver</button>
-    ${st==='open'?`<button class="btn btn-amber" style="margin-bottom:10px;" onclick="S.activeClient='${id}';closeModal();setTimeout(()=>{setOrderWaiting();},100)">⏳ Finalizar (aguardar devolução)</button>`:''}
-    ${st==='waiting'?`<button class="btn btn-green" style="margin-bottom:10px;" onclick="S.activeClient='${id}';closeModal();setTimeout(()=>showPaymentModal(),100)">💰 Registrar pagamento</button>`:''}
-    `:`<div style="padding:12px 0;text-align:center;color:var(--text2);font-size:14px;margin-bottom:12px;">Sem pedido em aberto</div>
-    <button class="btn btn-primary" style="margin-bottom:10px;" onclick="S.activeClient='${id}';S.scanMode='sale';closeModal();setTimeout(()=>renderScan(),100)">🛒 Criar pedido</button>`}
+      <button class="btn btn-primary" style="margin-bottom:10px;" onclick="S.activeClient='${id}';S.scanMode='sale';closeModal();setTimeout(()=>renderScan(),100)">🛒 Adicionar itens / Devolver</button>
+      ${st === 'open' ? `<button class="btn btn-amber" style="margin-bottom:10px;" onclick="S.activeClient='${id}';closeModal();setTimeout(()=>setOrderWaiting(),100)">⏳ Finalizar (aguardar devolução)</button>` : ''}
+      ${st === 'waiting' ? `<button class="btn btn-green" style="margin-bottom:10px;" onclick="S.activeClient='${id}';closeModal();setTimeout(()=>showPaymentModal(),100)">💰 Registrar pagamento</button>` : ''}
+    ` : `<div style="padding:12px 0;text-align:center;color:var(--text2);font-size:14px;margin-bottom:12px;">Sem pedido em aberto</div>
+      <button class="btn btn-primary" style="margin-bottom:10px;" onclick="S.activeClient='${id}';S.scanMode='sale';closeModal();setTimeout(()=>renderScan(),100)">🛒 Criar pedido</button>`}
     <button class="btn btn-red btn-sm" style="width:auto;margin:4px auto 0;" onclick="deleteClient('${id}')">🗑 Excluir</button>
   `);
 }
@@ -898,20 +987,21 @@ function showClientDetail(id){
 // ══════════════════════════════════════════════════════════
 // PRODUCTS TAB
 // ══════════════════════════════════════════════════════════
-function renderProducts(){
-  document.getElementById('content').innerHTML=`
+function renderProducts() {
+  document.getElementById('content').innerHTML = `
     <button class="btn btn-primary" style="margin-bottom:12px;" onclick="showAddProductForm()">+ Cadastrar Produto</button>
     <div class="search-wrap"><span class="search-icon">🔍</span>
       <input class="form-input" id="product-search" placeholder="Buscar por nome ou código…" oninput="filterProducts(this.value)"/></div>
     <div id="product-list"></div><div style="height:12px;"></div>`;
   filterProducts('');
 }
-function filterProducts(q){
-  const list=document.getElementById('product-list'); if(!list) return;
-  const all=Object.values(S.products);
-  const f=q?all.filter(p=>(p.name||'').toLowerCase().includes(q.toLowerCase())||p.code.includes(q)):all;
-  if(!f.length){list.innerHTML=`<div class="empty"><div class="icon">📦</div><p>${q?'Nenhum resultado':'Nenhum produto'}</p></div>`;return;}
-  list.innerHTML=f.map(p=>`
+
+function filterProducts(q) {
+  const list = document.getElementById('product-list'); if (!list) return;
+  const all  = Object.values(S.products);
+  const f    = q ? all.filter(p => (p.name || '').toLowerCase().includes(q.toLowerCase()) || p.code.includes(q)) : all;
+  if (!f.length) { list.innerHTML = `<div class="empty"><div class="icon">📦</div><p>${q ? 'Nenhum resultado' : 'Nenhum produto'}</p></div>`; return; }
+  list.innerHTML = f.map(p => `
     <div class="item-row" style="padding:12px;background:var(--surface);border-radius:var(--radius-sm);border:1px solid var(--border);margin-bottom:8px;">
       <div class="item-icon">📦</div>
       <div class="item-info"><div class="item-name">${p.name}</div><div class="item-sub">${p.code}</div></div>
@@ -919,7 +1009,8 @@ function filterProducts(q){
       <button class="btn btn-sm btn-outline" onclick="editProduct('${p.code}')" style="margin-left:8px;">✏</button>
     </div>`).join('');
 }
-function showAddProductForm(){
+
+function showAddProductForm() {
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title">Cadastrar Produto</div>
@@ -931,14 +1022,14 @@ function showAddProductForm(){
       </div>
     </div>
     <div id="modal-scan-wrap" style="display:none;margin-bottom:14px;">
-      <div class="scan-box" style="aspect-ratio:3/4;max-height:260px;">
+      <div class="scan-box" style="height:200px;max-height:200px;">
         <video id="modal-video" playsinline webkit-playsinline muted autoplay></video>
-        <div class="scan-overlay"><div class="scan-frame">
+        <div class="scan-overlay"><div class="scan-frame" style="width:80%;height:50%;">
           <span class="sc tl"></span><span class="sc tr"></span>
           <span class="sc bl"></span><span class="sc br"></span>
         </div></div>
       </div>
-      <div style="text-align:center;font-size:13px;color:var(--text2);margin-top:8px;">Aponte para o código</div>
+      <div style="text-align:center;font-size:13px;color:var(--text2);margin-top:8px;">Aponte para o código · ~15cm de distância</div>
     </div>
     <div class="form-group"><label class="form-label">Descrição *</label>
       <input class="form-input" id="mp-name" placeholder="Ex: Camisa Polo Azul M"/></div>
@@ -950,16 +1041,18 @@ function showAddProductForm(){
     </div>
   `);
 }
-function saveManualProduct(){
-  const code=document.getElementById('mp-code').value.trim();
-  const name=document.getElementById('mp-name').value.trim();
-  const price=parseFloat(document.getElementById('mp-price').value);
-  if(!code||!name||isNaN(price)||price<=0){toast('Preencha todos os campos','err');return;}
-  S.products[code]={code,name,price};
+
+function saveManualProduct() {
+  const code  = document.getElementById('mp-code').value.trim();
+  const name  = document.getElementById('mp-name').value.trim();
+  const price = parseFloat(document.getElementById('mp-price').value);
+  if (!code || !name || isNaN(price) || price <= 0) { toast('Preencha todos os campos', 'err'); return; }
+  S.products[code] = { code, name, price };
   save(); closeModal(); renderProducts(); toast('Produto cadastrado!');
 }
-function editProduct(code){
-  const p=S.products[code];
+
+function editProduct(code) {
+  const p = S.products[code];
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title">Editar Produto</div>
@@ -974,45 +1067,49 @@ function editProduct(code){
     </div>
   `);
 }
-function updateProduct(code){
-  const name=document.getElementById('ep-name').value.trim();
-  const price=parseFloat(document.getElementById('ep-price').value);
-  if(!name||isNaN(price)||price<=0){toast('Preencha todos os campos','err');return;}
-  S.products[code]={code,name,price}; save(); closeModal(); renderProducts(); toast('Produto atualizado!');
+
+function updateProduct(code) {
+  const name  = document.getElementById('ep-name').value.trim();
+  const price = parseFloat(document.getElementById('ep-price').value);
+  if (!name || isNaN(price) || price <= 0) { toast('Preencha todos os campos', 'err'); return; }
+  S.products[code] = { code, name, price };
+  save(); closeModal(); renderProducts(); toast('Produto atualizado!');
 }
-function deleteProduct(code){
-  delete S.products[code]; save(); closeModal(); renderProducts(); toast('Produto excluído');
+
+function deleteProduct(code) {
+  delete S.products[code];
+  save(); closeModal(); renderProducts(); toast('Produto excluído');
 }
 
 // ══════════════════════════════════════════════════════════
 // ORDERS TAB
 // ══════════════════════════════════════════════════════════
-function renderOrders(){
-  const openOrders=Object.values(S.orders).filter(o=>o.status==='open'&&Object.keys(o.items||{}).length>0);
-  const waitingOrders=Object.values(S.orders).filter(o=>o.status==='waiting'&&Object.keys(o.items||{}).length>0);
-  const closed=S.closed||[];
+function renderOrders() {
+  const allOrders    = Object.values(S.orders).filter(o => Object.keys(o.items || {}).length > 0);
+  const openOrders   = allOrders.filter(o => (o.status || 'open') === 'open');
+  const waitingOrders = allOrders.filter(o => o.status === 'waiting');
+  const closed       = S.closed || [];
 
-  function orderCard(o,onclick){
-    const c=S.clients[o.clientId]; if(!c) return '';
-    const count=Object.values(o.items).reduce((s,i)=>s+i.qty,0);
-    const isWaiting=o.status==='waiting';
-    return `<div class="card" style="cursor:pointer;" onclick="${onclick}">
+  function orderCard(o) {
+    const c  = S.clients[o.clientId]; if (!c) return '';
+    const count = Object.values(o.items).reduce((s, i) => s + i.qty, 0);
+    const isW = o.status === 'waiting';
+    return `<div class="card" style="cursor:pointer;" onclick="showOrderDetail('${o.clientId}')">
       <div style="display:flex;align-items:center;gap:12px;">
-        <div class="avatar" style="width:44px;height:44px;font-size:16px;background:${isWaiting?'var(--amber)':'var(--accent)'};">${initials(c.name)}</div>
+        <div class="avatar" style="width:44px;height:44px;font-size:16px;background:${isW ? 'var(--amber)' : 'var(--accent)'};">${initials(c.name)}</div>
         <div style="flex:1;"><div style="font-size:15px;font-weight:600;">${c.name}</div>
-        <div style="font-size:12px;color:var(--text2);">${count} item(s)${c.phone?' · '+c.phone:''}</div></div>
+        <div style="font-size:12px;color:var(--text2);">${count} item(s)${c.phone ? ' · ' + c.phone : ''}</div></div>
         <div style="text-align:right;">
           <div style="font-size:17px;font-weight:800;color:var(--green);">${fmt(o.total)}</div>
-          <span class="badge ${isWaiting?'badge-amber':'badge-blue'}">${isWaiting?'⏳ AGUARDANDO':'EM ABERTO'}</span>
+          <span class="badge ${isW ? 'badge-amber' : 'badge-blue'}">${isW ? '⏳ AGUARDANDO' : 'EM ABERTO'}</span>
         </div>
       </div>
     </div>`;
   }
 
-  const openHtml=openOrders.length?openOrders.map(o=>orderCard(o,`showOrderDetail('${o.clientId}')`)).join('')
-    :`<div style="padding:16px 0;text-align:center;color:var(--text2);font-size:14px;">Nenhum pedido em aberto</div>`;
-  const waitingHtml=waitingOrders.length?waitingOrders.map(o=>orderCard(o,`showOrderDetail('${o.clientId}')`)).join(''):'';
-  const closedHtml=closed.map((o,i)=>`
+  const waitingHtml = waitingOrders.length ? waitingOrders.map(o => orderCard(o)).join('') : '';
+  const openHtml    = openOrders.length    ? openOrders.map(o => orderCard(o)).join('')    : `<div style="padding:16px 0;text-align:center;color:var(--text2);font-size:14px;">Nenhum pedido em aberto</div>`;
+  const closedHtml  = closed.map((o, i) => `
     <div class="card" style="cursor:pointer;opacity:.85;" onclick="showClosedDetail(${i})">
       <div style="display:flex;align-items:center;gap:12px;">
         <div class="avatar" style="width:44px;height:44px;font-size:16px;background:var(--bg3);color:var(--text2);">${initials(o.clientName)}</div>
@@ -1025,27 +1122,28 @@ function renderOrders(){
       </div>
     </div>`).join('');
 
-  document.getElementById('content').innerHTML=`
-    ${waitingOrders.length?`<div class="section-label">⏳ Aguardando devolução</div>${waitingHtml}<div style="height:8px;"></div>`:''}
+  document.getElementById('content').innerHTML = `
+    ${waitingOrders.length ? `<div class="section-label">⏳ Aguardando devolução</div>${waitingHtml}<div style="height:8px;"></div>` : ''}
     <div class="section-label">Em aberto</div>${openHtml}
-    ${closed.length?`<div class="section-label" style="margin-top:16px;">Histórico de pagamentos</div>${closedHtml}`:''}
+    ${closed.length ? `<div class="section-label" style="margin-top:16px;">Histórico de pagamentos</div>${closedHtml}` : ''}
     <div style="height:12px;"></div>`;
 }
 
-function showOrderDetail(clientId){
-  const client=S.clients[clientId]; const order=S.orders[clientId]; if(!order) return;
-  const items=Object.values(order.items||{});
-  const st=order.status||'open';
+function showOrderDetail(clientId) {
+  const client = S.clients[clientId];
+  const order  = S.orders[clientId]; if (!order) return;
+  const items  = Object.values(order.items || {});
+  const st     = order.status || 'open';
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title">${client.name}</div>
-    <div class="modal-sub">${client.phone?'📱 '+client.phone:'Sem telefone'}</div>
-    ${st==='waiting'?`<div class="status-banner status-waiting" style="margin-bottom:12px;">⏳ Aguardando devolução</div>`:''}
+    <div class="modal-sub">${client.phone ? '📱 ' + client.phone : 'Sem telefone'}</div>
+    ${st === 'waiting' ? `<div class="status-banner status-waiting" style="margin-bottom:12px;">⏳ Aguardando devolução</div>` : ''}
     <div class="card" style="margin-bottom:16px;">
-      ${items.map(i=>`<div class="item-row">
+      ${items.map(i => `<div class="item-row">
         <div class="item-icon">📦</div>
         <div class="item-info"><div class="item-name">${i.name}</div><div class="item-sub">${i.code} · Qtd: ${i.qty}</div></div>
-        <div class="item-price">${fmt(i.price*i.qty)}</div>
+        <div class="item-price">${fmt(i.price * i.qty)}</div>
       </div>`).join('')}
       <div class="divider"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -1053,32 +1151,32 @@ function showOrderDetail(clientId){
         <span style="color:var(--green);font-size:20px;font-weight:800;">${fmt(order.total)}</span>
       </div>
     </div>
-    ${st==='waiting'
-      ?`<button class="btn btn-green" style="margin-bottom:10px;" onclick="S.activeClient='${clientId}';closeModal();setTimeout(()=>showPaymentModal(),100)">💰 Registrar pagamento</button>
+    ${st === 'waiting'
+      ? `<button class="btn btn-green" style="margin-bottom:10px;" onclick="S.activeClient='${clientId}';closeModal();setTimeout(()=>showPaymentModal(),100)">💰 Registrar pagamento</button>
          <button class="btn btn-primary" style="margin-bottom:10px;" onclick="S.activeClient='${clientId}';S.scanMode='return';closeModal();setTimeout(()=>renderScan(),100)">↩ Registrar devolução</button>
          <button class="btn btn-primary" style="margin-bottom:10px;" onclick="S.activeClient='${clientId}';S.scanMode='sale';closeModal();setTimeout(()=>renderScan(),100)">🛒 Adicionar itens</button>
          <button class="btn btn-outline" style="margin-bottom:10px;" onclick="S.activeClient='${clientId}';closeModal();setTimeout(()=>reopenOrder(),100)">↩ Reabrir pedido</button>`
-      :`<button class="btn btn-amber" style="margin-bottom:10px;" onclick="S.activeClient='${clientId}';closeModal();setTimeout(()=>setOrderWaiting(),100)">⏳ Finalizar (aguardar devolução)</button>
-        <button class="btn btn-primary" style="margin-bottom:10px;" onclick="S.activeClient='${clientId}';S.scanMode='return';closeModal();setTimeout(()=>renderScan(),100)">↩ Registrar devolução</button>
-        <button class="btn btn-primary" style="margin-bottom:10px;" onclick="S.activeClient='${clientId}';S.scanMode='sale';closeModal();setTimeout(()=>renderScan(),100)">🛒 Adicionar itens</button>`}
+      : `<button class="btn btn-amber" style="margin-bottom:10px;" onclick="S.activeClient='${clientId}';closeModal();setTimeout(()=>setOrderWaiting(),100)">⏳ Finalizar (aguardar devolução)</button>
+         <button class="btn btn-primary" style="margin-bottom:10px;" onclick="S.activeClient='${clientId}';S.scanMode='return';closeModal();setTimeout(()=>renderScan(),100)">↩ Registrar devolução</button>
+         <button class="btn btn-primary" style="margin-bottom:10px;" onclick="S.activeClient='${clientId}';S.scanMode='sale';closeModal();setTimeout(()=>renderScan(),100)">🛒 Adicionar itens</button>`}
     <button class="btn btn-outline" onclick="closeModal()">Fechar</button>
   `);
 }
 
-function showClosedDetail(idx){
-  const o=S.closed[idx]; if(!o) return;
-  const items=Object.values(o.items||{});
+function showClosedDetail(idx) {
+  const o = S.closed[idx]; if (!o) return;
+  const items = Object.values(o.items || {});
   showModal(`
     <div class="modal-handle"></div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
       <div style="font-size:28px;">✅</div>
       <div><div class="modal-title" style="margin-bottom:2px;">${o.clientName}</div>
-      <div style="font-size:13px;color:var(--text2);">${o.clientPhone?'📱 '+o.clientPhone+' · ':''}Pago em ${fmtDate(o.closedAt)}</div></div>
+      <div style="font-size:13px;color:var(--text2);">${o.clientPhone ? '📱 ' + o.clientPhone + ' · ' : ''}Pago em ${fmtDate(o.closedAt)}</div></div>
     </div>
     <div class="card" style="margin-bottom:16px;">
-      ${items.map(i=>`<div class="item-row">
+      ${items.map(i => `<div class="item-row">
         <div class="item-info"><div class="item-name">${i.name}</div><div class="item-sub">Qtd: ${i.qty}</div></div>
-        <div class="item-price">${fmt(i.price*i.qty)}</div>
+        <div class="item-price">${fmt(i.price * i.qty)}</div>
       </div>`).join('')}
       <div class="divider"></div>
       <div style="display:flex;justify-content:space-between;">
@@ -1090,22 +1188,27 @@ function showClosedDetail(idx){
     <button class="btn btn-outline" onclick="closeModal()">Fechar</button>
   `);
 }
-function deleteClosedOrder(idx){S.closed.splice(idx,1);save();closeModal();renderOrders();toast('Registro excluído');}
+
+function deleteClosedOrder(idx) {
+  S.closed.splice(idx, 1); save(); closeModal(); renderOrders(); toast('Registro excluído');
+}
 
 // ══════════════════════════════════════════════════════════
 // SETTINGS TAB
 // ══════════════════════════════════════════════════════════
-function renderSettings(){
-  const nP=Object.keys(S.products).length, nC=Object.keys(S.clients).length;
-  const allO=Object.values(S.orders).filter(o=>Object.keys(o.items||{}).length>0);
-  const nO=allO.filter(o=>o.status==='open').length;
-  const nW=allO.filter(o=>o.status==='waiting').length;
-  const nCl=(S.closed||[]).length, ghOk=S.ghToken&&S.ghRepo;
-  document.getElementById('content').innerHTML=`
+function renderSettings() {
+  const nP  = Object.keys(S.products).length;
+  const nC  = Object.keys(S.clients).length;
+  const allO = Object.values(S.orders).filter(o => Object.keys(o.items || {}).length > 0);
+  const nW  = allO.filter(o => o.status === 'waiting').length;
+  const nCl = (S.closed || []).length;
+  const ghOk = S.ghToken && S.ghRepo;
+
+  document.getElementById('content').innerHTML = `
     <div class="card">
       <div class="card-title">Resumo</div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center;">
-        ${[['Produtos',nP,'var(--accent2)'],['Clientes',nC,'var(--accent2)'],['Aguardando',nW,'var(--amber)'],['Pagos ✅',nCl,'var(--green)']].map(([l,v,c])=>
+        ${[['Produtos', nP, 'var(--accent2)'], ['Clientes', nC, 'var(--accent2)'], ['Aguardando', nW, 'var(--amber)'], ['Pagos ✅', nCl, 'var(--green)']].map(([l, v, c]) =>
           `<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:10px;">
             <div style="font-size:20px;font-weight:800;color:${c};">${v}</div>
             <div style="font-size:10px;color:var(--text2);margin-top:2px;">${l}</div>
@@ -1116,10 +1219,10 @@ function renderSettings(){
       <div class="card-title">☁️ Sincronização GitHub</div>
       <p style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.6;">
         Salva automaticamente no arquivo <code style="background:var(--bg3);padding:1px 5px;border-radius:4px;">dados.json</code> do repositório.
-        ${ghOk?`<br><br>✅ Conectado: <strong>${S.ghRepo}</strong>`:''}
+        ${ghOk ? `<br><br>✅ Conectado: <strong>${S.ghRepo}</strong>` : ''}
       </p>
-      <button class="btn ${ghOk?'btn-outline':'btn-primary'}" style="margin-bottom:10px;" onclick="showGitHubSetup()">${ghOk?'⚙️ Alterar configuração':'🔗 Conectar ao GitHub'}</button>
-      ${ghOk?`<button class="btn btn-green" onclick="syncGitHub(true)">☁️ Sincronizar agora</button>`:''}
+      <button class="btn ${ghOk ? 'btn-outline' : 'btn-primary'}" style="margin-bottom:10px;" onclick="showGitHubSetup()">${ghOk ? '⚙️ Alterar configuração' : '🔗 Conectar ao GitHub'}</button>
+      ${ghOk ? `<button class="btn btn-green" onclick="syncNow()">☁️ Sincronizar agora</button>` : ''}
     </div>
     <div class="card">
       <div class="card-title">💾 Backup local</div>
@@ -1137,47 +1240,56 @@ function renderSettings(){
     </div>
     <div style="height:12px;"></div>`;
 }
-function showGitHubSetup(){
+
+function showGitHubSetup() {
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title">🔗 Configurar GitHub</div>
     <div class="form-group"><label class="form-label">Repositório (usuário/repo) *</label>
-      <input class="form-input" id="gh-repo" placeholder="Ex: douglasmenegasso/consignado" value="${S.ghRepo}"/></div>
+      <input class="form-input" id="gh-repo" placeholder="Ex: douglasmenegasso/Consignado" value="${S.ghRepo}"/></div>
     <div class="form-group"><label class="form-label">Token de acesso (PAT) *</label>
       <input class="form-input" id="gh-token" type="password" placeholder="ghp_xxxxxxxxxxxx" value="${S.ghToken}"/>
-      <div class="form-hint">github.com → Settings → Developer settings → Personal access tokens → Tokens (classic) → marque <b>repo</b></div></div>
+      <div class="form-hint">github.com → foto de perfil → Settings → Developer settings → Personal access tokens → Tokens (classic) → marque <b>repo</b></div></div>
     <div class="row">
       <div class="form-group"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button></div>
       <div class="form-group"><button class="btn btn-primary" onclick="saveGitHubConfig()">Salvar e testar</button></div>
     </div>
   `);
 }
-async function saveGitHubConfig(){
-  const repo=document.getElementById('gh-repo').value.trim();
-  const token=document.getElementById('gh-token').value.trim();
-  if(!repo||!token){toast('Preencha todos os campos','err');return;}
-  S.ghRepo=repo; S.ghToken=token;
-  DB.save('csn_ghrepo',repo); DB.save('csn_ghtoken',token);
-  toast('Testando conexão…','info'); closeModal();
-  try{ const l=await ghLoad(); if(!l) await ghSave(); toast('✅ GitHub conectado!','ok'); startAutoSync(); }
-  catch(e){ toast('Erro: '+e.message,'err'); }
+
+async function saveGitHubConfig() {
+  const repo  = document.getElementById('gh-repo').value.trim();
+  const token = document.getElementById('gh-token').value.trim();
+  if (!repo || !token) { toast('Preencha todos os campos', 'err'); return; }
+  S.ghRepo = repo; S.ghToken = token;
+  DB.save('csn_ghrepo', repo); DB.save('csn_ghtoken', token);
+  toast('Testando conexão…', 'info'); closeModal();
+  try {
+    const loaded = await ghLoad();
+    if (!loaded) await _ghDoSave();
+    toast('✅ GitHub conectado!', 'ok');
+    startAutoSync();
+  } catch(e) { toast('Erro: ' + e.message, 'err'); }
   renderSettings();
 }
-function exportBackup(){
-  const data={version:1,exportedAt:new Date().toISOString(),products:S.products,clients:S.clients,orders:S.orders,closed:S.closed};
-  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob); const a=document.createElement('a');
-  a.href=url; a.download=`consignado-backup-${new Date().toISOString().slice(0,10)}.json`;
+
+function exportBackup() {
+  const data = { version: 1, exportedAt: new Date().toISOString(), products: S.products, clients: S.clients, orders: S.orders, closed: S.closed };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `consignado-backup-${new Date().toISOString().slice(0, 10)}.json`;
   document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
   toast('Backup exportado!');
 }
-function importBackup(event){
-  const file=event.target.files[0]; if(!file) return;
-  const r=new FileReader();
-  r.onload=(e)=>{
-    try{
-      const data=JSON.parse(e.target.result);
-      if(!data.products||!data.clients){toast('Arquivo inválido','err');return;}
+
+function importBackup(event) {
+  const file = event.target.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.products || !data.clients) { toast('Arquivo inválido', 'err'); return; }
       showModal(`
         <div class="modal-handle"></div>
         <div class="modal-title">Confirmar importação</div>
@@ -1186,17 +1298,19 @@ function importBackup(event){
           <div class="form-group"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button></div>
           <div class="form-group"><button class="btn btn-primary" onclick='applyBackup(${JSON.stringify(JSON.stringify(data))})'>Importar</button></div>
         </div>`);
-    }catch(e){toast('Erro ao ler arquivo','err');}
+    } catch(e) { toast('Erro ao ler arquivo', 'err'); }
   };
   r.readAsText(file);
 }
-function applyBackup(jsonStr){
-  const data=JSON.parse(jsonStr);
-  S.products=data.products; S.clients=data.clients;
-  S.orders=data.orders||{}; S.closed=data.closed||[]; S.activeClient=null;
+
+function applyBackup(jsonStr) {
+  const data = JSON.parse(jsonStr);
+  S.products = data.products; S.clients = data.clients;
+  S.orders = data.orders || {}; S.closed = data.closed || []; S.activeClient = null;
   save(); closeModal(); toast('Backup importado!'); renderSettings();
 }
-function clearAll(){
+
+function clearAll() {
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title" style="color:var(--red);">Apagar tudo?</div>
@@ -1206,24 +1320,28 @@ function clearAll(){
       <div class="form-group"><button class="btn btn-red" onclick="confirmClearAll()">Apagar tudo</button></div>
     </div>`);
 }
-function confirmClearAll(){
-  S.products={}; S.clients={}; S.orders={}; S.closed=[]; S.activeClient=null;
+
+function confirmClearAll() {
+  S.products = {}; S.clients = {}; S.orders = {}; S.closed = []; S.activeClient = null;
   save(); closeModal(); toast('Dados apagados'); renderSettings();
 }
 
 // ══════════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════════
-async function init(){
-  if(S.ghToken&&S.ghRepo){ try{await ghLoad();}catch(e){} }
+async function init() {
+  if (S.ghToken && S.ghRepo) {
+    try { await ghLoad(); } catch(e) {}
+  }
   startAutoSync();
   showTab('scan');
 }
-(function loadZXing(){
-  const s=document.createElement('script');
-  s.src='https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js';
-  s.onload=()=>init();
-  s.onerror=()=>{ console.error('ZXing load failed'); init(); };
+
+(function loadZXing() {
+  const s = document.createElement('script');
+  s.src = 'https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js';
+  s.onload = () => init();
+  s.onerror = () => { console.error('ZXing load failed'); init(); };
   document.head.appendChild(s);
 })();
 </script>
