@@ -9,11 +9,6 @@
       "code": "7897595633675",
       "name": "Bissulfato de clopidogrel",
       "price": 28.9
-    },
-    "7896523215235": {
-      "code": "7896523215235",
-      "name": "Sinvastatina",
-      "price": 8.58
     }
   },
   "clients": {
@@ -59,5 +54,5 @@
     }
   },
   "closed": [],
-  "savedAt": "2026-05-16T17:57:16.340Z"
+  "savedAt": "2026-05-16T17:57:33.543Z"
 }
