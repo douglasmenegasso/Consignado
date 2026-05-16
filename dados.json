@@ -55,13 +55,13 @@
           "code": "7891058000943",
           "name": "Remedio",
           "price": 50,
-          "qty": 3
+          "qty": 4
         }
       },
-      "total": 150,
+      "total": 200,
       "status": "open"
     }
   },
   "closed": [],
-  "savedAt": "2026-05-16T05:33:21.759Z"
+  "savedAt": "2026-05-16T05:33:26.767Z"
 }
