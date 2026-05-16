@@ -147,8 +147,21 @@
       },
       "total": 33.36,
       "status": "waiting"
+    },
+    "c_1778952708202": {
+      "clientId": "c_1778952708202",
+      "items": {
+        "78948174": {
+          "code": "78948174",
+          "name": "Cigarro",
+          "price": 8,
+          "qty": 1
+        }
+      },
+      "total": 8,
+      "status": "open"
     }
   },
   "closed": [],
-  "savedAt": "2026-05-16T23:11:48.705Z"
+  "savedAt": "2026-05-16T23:12:06.631Z"
 }
