@@ -156,9 +156,15 @@
           "name": "Sinvastatina",
           "price": 9.98,
           "qty": 1
+        },
+        "7891203058171": {
+          "code": "7891203058171",
+          "name": "Panco Maizena",
+          "price": 10,
+          "qty": 1
         }
       },
-      "total": 9.98,
+      "total": 19.98,
       "status": "open"
     }
   },
@@ -215,5 +221,5 @@
       "closedAt": "2026-05-16T23:14:17.958Z"
     }
   ],
-  "savedAt": "2026-05-16T23:14:42.150Z"
+  "savedAt": "2026-05-16T23:14:44.711Z"
 }
