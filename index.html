@@ -117,7 +117,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
         <div class="header-title">📦 Consignado</div>
         <div class="header-sub" id="header-sub">Selecione um cliente para iniciar</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);font-weight:600;letter-spacing:.5px;margin-top:4px;">v1.15</div>
+      <div style="font-size:10px;color:var(--text3);font-weight:600;letter-spacing:.5px;margin-top:4px;">v1.16</div>
     </div>
   </div>
   <div class="content" id="content"></div>
@@ -164,7 +164,7 @@ function saveLocal() {
 
 function save() {
   saveLocal();
-  S.lastSaved = new Date().toISOString();
+  S.lastSaved = Date.now(); // Use numeric timestamp, no ISO string comparison issues
   ghSaveQueued();
 }
 
@@ -193,11 +193,12 @@ async function ghLoad() {
   try {
     const f = await ghReq('GET', GH_FILE);
     const d = JSON.parse(atob(f.content.replace(/\n/g, '')));
-    S.products = d.products || {};
-    S.clients  = d.clients  || {};
-    S.orders   = d.orders   || {};
-    S.closed   = d.closed   || [];
-    S.lastSaved = d.savedAt || null;
+    // Deep clone to avoid reference issues
+    S.products = JSON.parse(JSON.stringify(d.products || {}));
+    S.clients  = JSON.parse(JSON.stringify(d.clients  || {}));
+    S.orders   = JSON.parse(JSON.stringify(d.orders   || {}));
+    S.closed   = JSON.parse(JSON.stringify(d.closed   || []));
+    S.lastSaved = d.savedAt ? new Date(d.savedAt).getTime() : 0;
     saveLocal();
     return true;
   } catch(e) {
@@ -229,13 +230,17 @@ async function ghSaveQueued() {
 }
 
 async function _ghDoSave() {
+  const savedAt = new Date().toISOString();
+  // Deep clone snapshot at moment of save — prevents partial data issues
   const d = {
-    products: S.products, clients: S.clients,
-    orders: S.orders, closed: S.closed,
-    savedAt: new Date().toISOString()
+    products: JSON.parse(JSON.stringify(S.products)),
+    clients:  JSON.parse(JSON.stringify(S.clients)),
+    orders:   JSON.parse(JSON.stringify(S.orders)),
+    closed:   JSON.parse(JSON.stringify(S.closed)),
+    savedAt
   };
   const content = btoa(unescape(encodeURIComponent(JSON.stringify(d, null, 2))));
-  // Fetch fresh SHA immediately before PUT — minimizes conflict window
+  // Fetch fresh SHA immediately before PUT
   let sha;
   try { const f = await ghReq('GET', GH_FILE); sha = f.sha; } catch(e) {}
   try {
@@ -244,8 +249,9 @@ async function _ghDoSave() {
       content,
       ...(sha ? { sha } : {})
     });
+    // Update lastSaved to remote time after successful save
+    S.lastSaved = new Date(savedAt).getTime();
   } catch(e) {
-    // SHA conflict: fetch again and retry once
     if (e.message && e.message.includes('does not match')) {
       let sha2;
       try { const f2 = await ghReq('GET', GH_FILE); sha2 = f2.sha; } catch(e2) {}
@@ -254,6 +260,7 @@ async function _ghDoSave() {
         content,
         ...(sha2 ? { sha: sha2 } : {})
       });
+      S.lastSaved = new Date(savedAt).getTime();
     } else {
       throw e;
     }
@@ -262,6 +269,7 @@ async function _ghDoSave() {
 
 async function syncNow() {
   if (!S.ghToken || !S.ghRepo) { toast('Configure o GitHub nas ⚙️ Config', 'info'); return; }
+  toast('Sincronizando…', 'info');
   try { await _ghDoSave(); toast('✓ Sincronizado!', 'ok'); }
   catch(e) { toast('Erro: ' + e.message, 'err'); }
 }
@@ -289,13 +297,13 @@ async function ghPull() {
     const d = JSON.parse(atob(f.content.replace(/\n/g, '')));
     if (!d.savedAt) return;
     const remoteT = new Date(d.savedAt).getTime();
-    const localT  = S.lastSaved ? new Date(S.lastSaved).getTime() : 0;
-    if (remoteT > localT + 2000) { // 2s tolerance to avoid self-pull
-      S.products = d.products || {};
-      S.clients  = d.clients  || {};
-      S.orders   = d.orders   || {};
-      S.closed   = d.closed   || [];
-      S.lastSaved = d.savedAt;
+    const localT  = S.lastSaved || 0;
+    if (remoteT > localT + 3000) { // 3s tolerance
+      S.products  = JSON.parse(JSON.stringify(d.products || {}));
+      S.clients   = JSON.parse(JSON.stringify(d.clients  || {}));
+      S.orders    = JSON.parse(JSON.stringify(d.orders   || {}));
+      S.closed    = JSON.parse(JSON.stringify(d.closed   || []));
+      S.lastSaved = remoteT;
       saveLocal();
       toast('☁️ Dados atualizados de outro dispositivo', 'info');
       refreshCurrentTab();
@@ -419,10 +427,18 @@ async function startMainScan() {
   const video = document.getElementById('main-video');
   if (!video) return;
 
-  // Full reset before starting
+  // Full reset before starting — longer delay prevents black screen
   const r = _resetReader(_mainReader, _mainStream);
   _mainReader = r.reader; _mainStream = r.stream;
-  await new Promise(res => setTimeout(res, 300));
+  await new Promise(res => setTimeout(res, 500));
+
+  // Show loading state while camera initializes
+  const camOverlay = document.getElementById('cam-overlay');
+  const camMsg = document.getElementById('cam-msg');
+  const camBtn = document.getElementById('cam-btn');
+  if (camOverlay) { camOverlay.style.display = 'flex'; }
+  if (camMsg) camMsg.innerHTML = '⏳ Iniciando câmera…';
+  if (camBtn) camBtn.style.display = 'none';
 
   try {
     _mainStream = await _getStream();
@@ -465,10 +481,27 @@ function _hideCamOverlay() { const o = document.getElementById('cam-overlay'); i
 function requestCameraPermission() { _hideCamOverlay(); startMainScan(); }
 
 let _mainLast = '', _mainLastT = 0;
+// ── Beep sound on successful scan ──
+function beep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 1800;
+    osc.type = 'square';
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.12);
+  } catch(e) {}
+}
+
 function _onMainCode(code) {
   const now = Date.now();
   if (code === _mainLast && now - _mainLastT < 2000) return;
   _mainLast = code; _mainLastT = now;
+  beep();
   handleCode(code);
 }
 
@@ -758,6 +791,11 @@ function confirmPayment(clientId) {
 // REGISTER PRODUCT — restart scanner after modal closes
 // ══════════════════════════════════════════════════════════
 function showRegisterProduct(code) {
+  if (S.products[code]) {
+    // Already exists — just handle as normal code
+    handleCode(code);
+    return;
+  }
   showModal(`
     <div class="modal-handle"></div>
     <div class="modal-title">Produto não cadastrado</div>
@@ -1122,6 +1160,9 @@ function saveManualProduct() {
   const name  = document.getElementById('mp-name').value.trim();
   const price = parseFloat(document.getElementById('mp-price').value);
   if (!code || !name || isNaN(price) || price <= 0) { toast('Preencha todos os campos', 'err'); return; }
+  if (S.products[code]) {
+    if (!confirm(`Código ${code} já está cadastrado como "${S.products[code].name}". Deseja substituir?`)) return;
+  }
   S.products[code] = { code, name, price };
   save(); closeModal(); renderProducts(); toast('Produto cadastrado!');
 }
@@ -1232,7 +1273,6 @@ function showOrderDetail(clientId) {
          <button class="btn btn-primary" style="margin-bottom:10px;" onclick="S.activeClient='${clientId}';S.scanMode='sale';closeModal();setTimeout(()=>renderScan(),100)">🛒 Adicionar itens</button>
          <button class="btn btn-outline" style="margin-bottom:10px;" onclick="S.activeClient='${clientId}';closeModal();setTimeout(()=>reopenOrder(),100)">↩ Reabrir pedido</button>`
       : `<button class="btn btn-amber" style="margin-bottom:10px;" onclick="S.activeClient='${clientId}';closeModal();setTimeout(()=>setOrderWaiting(),100)">⏳ Finalizar (aguardar devolução)</button>
-         <button class="btn btn-primary" style="margin-bottom:10px;" onclick="S.activeClient='${clientId}';S.scanMode='return';closeModal();setTimeout(()=>renderScan(),100)">↩ Registrar devolução</button>
          <button class="btn btn-primary" style="margin-bottom:10px;" onclick="S.activeClient='${clientId}';S.scanMode='sale';closeModal();setTimeout(()=>renderScan(),100)">🛒 Adicionar itens</button>`}
     <button class="btn btn-outline" onclick="closeModal()">Fechar</button>
   `);
@@ -1297,7 +1337,8 @@ function renderSettings() {
         ${ghOk ? `<br><br>✅ Conectado: <strong>${S.ghRepo}</strong>` : ''}
       </p>
       <button class="btn ${ghOk ? 'btn-outline' : 'btn-primary'}" style="margin-bottom:10px;" onclick="showGitHubSetup()">${ghOk ? '⚙️ Alterar configuração' : '🔗 Conectar ao GitHub'}</button>
-      ${ghOk ? `<button class="btn btn-green" onclick="syncNow()">☁️ Sincronizar agora</button>` : ''}
+      ${ghOk ? `<button class="btn btn-green" style="margin-bottom:10px;" onclick="syncNow()">☁️ Sincronizar agora</button>
+      <button class="btn btn-red" onclick="disconnectGitHub()">🔌 Desconectar GitHub</button>` : ''}
     </div>
     <div class="card">
       <div class="card-title">💾 Backup local</div>
@@ -1313,8 +1354,17 @@ function renderSettings() {
       <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">Apaga todos os dados permanentemente.</p>
       <button class="btn btn-red" onclick="clearAll()">🗑 Apagar todos os dados</button>
     </div>
-    <div style="text-align:center;padding:12px 0 4px;font-size:11px;color:var(--text3);">📦 Consignado App · versão 1.15</div>
+    <div style="text-align:center;padding:12px 0 4px;font-size:11px;color:var(--text3);">📦 Consignado App · versão 1.16</div>
     <div style="height:12px;"></div>`;
+}
+
+function disconnectGitHub() {
+  if (!confirm('Desconectar o GitHub? Os dados locais serão mantidos, mas a sincronização automática será desativada.')) return;
+  S.ghToken = ''; S.ghRepo = '';
+  DB.save('csn_ghtoken', ''); DB.save('csn_ghrepo', '');
+  stopAutoSync();
+  toast('GitHub desconectado', 'info');
+  renderSettings();
 }
 
 function showGitHubSetup() {
