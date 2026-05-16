@@ -2,8 +2,8 @@
   "products": {
     "7891058000943": {
       "code": "7891058000943",
-      "name": "Succinato de metoprolol",
-      "price": 30.58
+      "name": "Remedio",
+      "price": 50
     },
     "7896523215235": {
       "code": "7896523215235",
@@ -47,25 +47,6 @@
       },
       "total": 160.76,
       "status": "waiting"
-    },
-    "41996427444": {
-      "clientId": "41996427444",
-      "items": {
-        "7891058000943": {
-          "code": "7891058000943",
-          "name": "Succinato de metoprolol",
-          "price": 30.58,
-          "qty": 3
-        },
-        "7896523215235": {
-          "code": "7896523215235",
-          "name": "Remedio 2",
-          "price": 15.19,
-          "qty": 4
-        }
-      },
-      "total": 152.5,
-      "status": "waiting"
     }
   },
   "closed": [
@@ -85,5 +66,5 @@
       "closedAt": "2026-05-16T05:34:37.756Z"
     }
   ],
-  "savedAt": "2026-05-16T17:06:32.509Z"
+  "savedAt": "2026-05-16T17:07:23.457Z"
 }
