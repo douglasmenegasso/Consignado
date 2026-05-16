@@ -1,10 +1,5 @@
 {
   "products": {
-    "78948174": {
-      "code": "78948174",
-      "name": "Cigarro",
-      "price": 8
-    },
     "7891058000943": {
       "code": "7891058000943",
       "name": "Succinato de metoprolol",
@@ -13,42 +8,7 @@
     "7897595633675": {
       "code": "7897595633675",
       "name": "Bissulfato de clopidogrel",
-      "price": 21.6
-    },
-    "1220173815235": {
-      "code": "1220173815235",
-      "name": "Sinvastatina",
-      "price": 9.98
-    },
-    "7896181914280": {
-      "code": "7896181914280",
-      "name": "Fosfato sÃ³dico de prednisolona",
-      "price": 21.5
-    },
-    "7891203058171": {
-      "code": "7891203058171",
-      "name": "Panco Maizena",
-      "price": 10
-    },
-    "7898959897085": {
-      "code": "7898959897085",
-      "name": "LenÃ§o umedecido",
-      "price": 3.99
-    },
-    "7897429363259": {
-      "code": "7897429363259",
-      "name": "PÃ£o ð",
-      "price": 4.39
-    },
-    "7892840800000": {
-      "code": "7892840800000",
-      "name": "Pepsi",
-      "price": 12
-    },
-    "7891150072053": {
-      "code": "7891150072053",
-      "name": "Hellmann's",
-      "price": 12
+      "price": 28.9
     }
   },
   "clients": {
@@ -97,135 +57,8 @@
       },
       "total": 116.69999999999999,
       "status": "waiting"
-    },
-    "c_1778952716290": {
-      "clientId": "c_1778952716290",
-      "items": {
-        "7891203058171": {
-          "code": "7891203058171",
-          "name": "Panco Maizena",
-          "price": 10,
-          "qty": 1
-        },
-        "7897429363259": {
-          "code": "7897429363259",
-          "name": "PÃ£o ð",
-          "price": 4.39,
-          "qty": 1
-        }
-      },
-      "total": 14.39,
-      "status": "waiting"
-    },
-    "c_1778952690646": {
-      "clientId": "c_1778952690646",
-      "items": {
-        "7891058000943": {
-          "code": "7891058000943",
-          "name": "Succinato de metoprolol",
-          "price": 15,
-          "qty": 1
-        },
-        "1220173815235": {
-          "code": "1220173815235",
-          "name": "Sinvastatina",
-          "price": 9.98,
-          "qty": 1
-        },
-        "7897429363259": {
-          "code": "7897429363259",
-          "name": "PÃ£o ð",
-          "price": 4.39,
-          "qty": 1
-        },
-        "7898959897085": {
-          "code": "7898959897085",
-          "name": "LenÃ§o umedecido",
-          "price": 3.99,
-          "qty": 1
-        }
-      },
-      "total": 33.36,
-      "status": "waiting"
-    },
-    "c_1778952708202": {
-      "clientId": "c_1778952708202",
-      "items": {
-        "1220173815235": {
-          "code": "1220173815235",
-          "name": "Sinvastatina",
-          "price": 9.98,
-          "qty": 1
-        },
-        "7891203058171": {
-          "code": "7891203058171",
-          "name": "Panco Maizena",
-          "price": 10,
-          "qty": 1
-        },
-        "7897429363259": {
-          "code": "7897429363259",
-          "name": "PÃ£o ð",
-          "price": 4.39,
-          "qty": 1
-        }
-      },
-      "total": 24.37,
-      "status": "open"
     }
   },
-  "closed": [
-    {
-      "clientId": "c_1778952708202",
-      "clientName": "Ayla",
-      "clientPhone": "",
-      "items": {
-        "78948174": {
-          "code": "78948174",
-          "name": "Cigarro",
-          "price": 8,
-          "qty": 1
-        },
-        "1220173815235": {
-          "code": "1220173815235",
-          "name": "Sinvastatina",
-          "price": 9.98,
-          "qty": 1
-        },
-        "7891203058171": {
-          "code": "7891203058171",
-          "name": "Panco Maizena",
-          "price": 10,
-          "qty": 1
-        },
-        "7891150072053": {
-          "code": "7891150072053",
-          "name": "Hellmann's",
-          "price": 12,
-          "qty": 1
-        },
-        "7892840800000": {
-          "code": "7892840800000",
-          "name": "Pepsi",
-          "price": 12,
-          "qty": 1
-        },
-        "7897429363259": {
-          "code": "7897429363259",
-          "name": "PÃ£o ð",
-          "price": 4.39,
-          "qty": 2
-        },
-        "7898959897085": {
-          "code": "7898959897085",
-          "name": "LenÃ§o umedecido",
-          "price": 3.99,
-          "qty": 1
-        }
-      },
-      "total": 64.75,
-      "closedAt": "2026-05-16T23:14:17.958Z"
-    }
-  ],
-  "savedAt": "2026-05-16T23:19:19.579Z"
+  "closed": [],
+  "savedAt": "2026-05-16T23:20:14.326Z"
 }
