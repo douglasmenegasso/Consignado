@@ -55,10 +55,10 @@
           "code": "7891058000943",
           "name": "Succinato de metoprolol",
           "price": 30.58,
-          "qty": 2
+          "qty": 1
         }
       },
-      "total": 61.16,
+      "total": 30.58,
       "status": "waiting"
     }
   },
@@ -79,5 +79,5 @@
       "closedAt": "2026-05-16T05:34:37.756Z"
     }
   ],
-  "savedAt": "2026-05-16T16:57:38.168Z"
+  "savedAt": "2026-05-16T16:57:58.176Z"
 }
