@@ -151,7 +151,7 @@ function saveLocal(){
   DB.save('csn_products',S.products); DB.save('csn_clients',S.clients);
   DB.save('csn_orders',S.orders);     DB.save('csn_closed',S.closed);
 }
-async function save(){ saveLocal(); syncGitHub(false); }
+async function save(){ saveLocal(); S._lastSaved=new Date().toISOString(); syncGitHub(false); }
 
 // ══════════════════════════════════════════════════════════
 // GITHUB SYNC
@@ -177,35 +177,92 @@ async function ghLoad(){
   }catch(e){if(e.message&&e.message.includes('Not Found')) return false; throw e;}
 }
 let _syncing=false;
+let _pendingSync=false;
+
 async function ghSave(){
   if(!S.ghToken||!S.ghRepo) return;
-  if(_syncing) return; // prevent concurrent saves
+  
+  // If already syncing, mark pending and return — will retry after current finishes
+  if(_syncing){ _pendingSync=true; return; }
   _syncing=true;
+  _pendingSync=false;
+
   try{
     const d={products:S.products,clients:S.clients,orders:S.orders,closed:S.closed,savedAt:new Date().toISOString()};
     const content=btoa(unescape(encodeURIComponent(JSON.stringify(d,null,2))));
-    // Always fetch fresh SHA before saving to avoid conflicts
-    let sha; try{const f=await ghReq('GET',GH_FILE); sha=f.sha;}catch(e){}
-    await ghReq('PUT',GH_FILE,{message:'Sync '+new Date().toLocaleString('pt-BR'),content,...(sha?{sha}:{})});
+    
+    // Retry up to 3 times on SHA conflict
+    for(let attempt=1; attempt<=3; attempt++){
+      try{
+        // Always fetch fresh SHA immediately before PUT
+        let sha;
+        try{ const f=await ghReq('GET',GH_FILE); sha=f.sha; }catch(e){}
+        await ghReq('PUT',GH_FILE,{
+          message:'Sync '+new Date().toLocaleString('pt-BR'),
+          content,
+          ...(sha?{sha}:{})
+        });
+        break; // success
+      }catch(e){
+        if(attempt===3) throw e;
+        // Wait a bit before retry (exponential backoff)
+        await new Promise(r=>setTimeout(r, attempt*1000));
+      }
+    }
   }finally{
     _syncing=false;
+    // If another save was requested while we were busy, run it now
+    if(_pendingSync) setTimeout(()=>ghSave(), 500);
   }
 }
 async function syncGitHub(show=true){
   if(!S.ghToken||!S.ghRepo){if(show) toast('Configure o GitHub nas ⚙️ Config','info'); return;}
-  try{await ghSave(); if(show) toast('✓ Sincronizado!','ok');}
-  catch(e){toast('Erro GitHub: '+e.message,'err');}
+  try{
+    await ghSave();
+    if(show) toast('✓ Sincronizado!','ok');
+  }catch(e){
+    // Don't show SHA conflict errors silently — just retry next cycle
+    if(show) toast('Erro GitHub: '+e.message,'err');
+  }
 }
 
-// Auto-sync every 30 seconds (5s is too aggressive for GitHub API rate limits)
+// Auto-sync every 60 seconds (safe for multi-device without rate limit issues)
 let _autoSyncInterval=null;
+let _autoPullInterval=null;
 function startAutoSync(){
   stopAutoSync();
   if(!S.ghToken||!S.ghRepo) return;
-  _autoSyncInterval=setInterval(()=>syncGitHub(false), 30000);
+  // Save local changes every 60s
+  _autoSyncInterval=setInterval(()=>syncGitHub(false), 60000);
+  // Pull remote changes every 30s to stay in sync with other devices
+  _autoPullInterval=setInterval(async()=>{
+    if(_syncing) return;
+    try{
+      const f=await ghReq('GET',GH_FILE);
+      if(!f) return;
+      const d=JSON.parse(atob(f.content.replace(/\n/g,'')));
+      if(!d.savedAt) return;
+      // Only update if remote is newer than local
+      const remoteSaved=new Date(d.savedAt).getTime();
+      const localSaved=new Date(S._lastSaved||0).getTime();
+      if(remoteSaved>localSaved){
+        S.products=d.products||{}; S.clients=d.clients||{};
+        S.orders=d.orders||{};     S.closed=d.closed||[];
+        S._lastSaved=d.savedAt;
+        saveLocal();
+        // Refresh current tab silently
+        if(S.tab==='scan')     renderScan();
+        else if(S.tab==='clients')  renderClients();
+        else if(S.tab==='products') renderProducts();
+        else if(S.tab==='orders')   renderOrders();
+        else if(S.tab==='settings') renderSettings();
+      }
+    }catch(e){}
+  }, 30000);
 }
 function stopAutoSync(){
   if(_autoSyncInterval){clearInterval(_autoSyncInterval);_autoSyncInterval=null;}
+  if(_autoPullInterval){clearInterval(_autoPullInterval);_autoPullInterval=null;}
 }
 
 // ══════════════════════════════════════════════════════════
