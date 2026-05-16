@@ -127,12 +127,18 @@
           "name": "Pão 🍞",
           "price": 4.39,
           "qty": 1
+        },
+        "7898959897085": {
+          "code": "7898959897085",
+          "name": "Lenço umedecido",
+          "price": 3.99,
+          "qty": 1
         }
       },
-      "total": 29.37,
+      "total": 33.36,
       "status": "open"
     }
   },
   "closed": [],
-  "savedAt": "2026-05-16T23:09:34.911Z"
+  "savedAt": "2026-05-16T23:09:41.500Z"
 }
