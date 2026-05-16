@@ -85,9 +85,15 @@
           "name": "Meleato de Enalapril",
           "price": 5.99,
           "qty": 1
+        },
+        "7897595633675": {
+          "code": "7897595633675",
+          "name": "Bissulfato de clopidogrel",
+          "price": 35.9,
+          "qty": 1
         }
       },
-      "total": 5.99,
+      "total": 41.89,
       "status": "open"
     }
   },
@@ -108,5 +114,5 @@
       "closedAt": "2026-05-16T05:34:37.756Z"
     }
   ],
-  "savedAt": "2026-05-16T16:10:16.572Z"
+  "savedAt": "2026-05-16T16:10:39.546Z"
 }
