@@ -47,9 +47,13 @@
       },
       "total": 160.76,
       "status": "waiting"
-    },
-    "c_1778908900613": {
+    }
+  },
+  "closed": [
+    {
       "clientId": "c_1778908900613",
+      "clientName": "Nikollas Cervi",
+      "clientPhone": "",
       "items": {
         "7891058000943": {
           "code": "7891058000943",
@@ -59,9 +63,8 @@
         }
       },
       "total": 150,
-      "status": "waiting"
+      "closedAt": "2026-05-16T05:34:37.756Z"
     }
-  },
-  "closed": [],
-  "savedAt": "2026-05-16T05:34:36.784Z"
+  ],
+  "savedAt": "2026-05-16T05:34:41.723Z"
 }
