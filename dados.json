@@ -1,5 +1,10 @@
 {
   "products": {
+    "78948174": {
+      "code": "78948174",
+      "name": "Cigarro",
+      "price": 8
+    },
     "7891058000943": {
       "code": "7891058000943",
       "name": "Succinato de metoprolol",
@@ -70,5 +75,5 @@
     }
   },
   "closed": [],
-  "savedAt": "2026-05-16T23:03:23.984Z"
+  "savedAt": "2026-05-16T23:03:31.310Z"
 }
