@@ -168,12 +168,18 @@
           "name": "Panco Maizena",
           "price": 10,
           "qty": 1
+        },
+        "7891150072053": {
+          "code": "7891150072053",
+          "name": "Hellmann's",
+          "price": 12,
+          "qty": 1
         }
       },
-      "total": 27.98,
+      "total": 39.980000000000004,
       "status": "open"
     }
   },
   "closed": [],
-  "savedAt": "2026-05-16T23:12:09.181Z"
+  "savedAt": "2026-05-16T23:12:14.345Z"
 }
