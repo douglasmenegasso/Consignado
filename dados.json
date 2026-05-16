@@ -1,49 +1,7 @@
 {
-  "products": {
-    "7891058000943": {
-      "code": "7891058000943",
-      "name": "Succinato de metoprolol",
-      "price": 15
-    },
-    "7897595633675": {
-      "code": "7897595633675",
-      "name": "Bissulfato de clopidogrel",
-      "price": 28.9
-    },
-    "7896523215235": {
-      "code": "7896523215235",
-      "name": "Sinvastatina",
-      "price": 8.58
-    }
-  },
-  "clients": {
-    "c_1778952690646": {
-      "id": "c_1778952690646",
-      "name": "Klara",
-      "phone": ""
-    },
-    "c_1778952697390": {
-      "id": "c_1778952697390",
-      "name": "Douglas",
-      "phone": ""
-    },
-    "c_1778952708202": {
-      "id": "c_1778952708202",
-      "name": "Ayla",
-      "phone": ""
-    },
-    "c_1778952716290": {
-      "id": "c_1778952716290",
-      "name": "Ketelen",
-      "phone": ""
-    },
-    "c_1778952723034": {
-      "id": "c_1778952723034",
-      "name": "Kellen",
-      "phone": ""
-    }
-  },
+  "products": {},
+  "clients": {},
   "orders": {},
   "closed": [],
-  "savedAt": "2026-05-16T17:40:39.449Z"
+  "savedAt": "2026-05-16T17:40:41.512Z"
 }
