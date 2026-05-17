@@ -174,9 +174,15 @@
           "name": "Broa de LinhaÃÂÃÂ§a 58% Integral",
           "price": 3.99,
           "qty": 1
+        },
+        "7891203058171": {
+          "code": "7891203058171",
+          "name": "Seven Boys pÃÂÃÂ£o de forma",
+          "price": 7.65,
+          "qty": 1
         }
       },
-      "total": 148.72,
+      "total": 156.37,
       "status": "open"
     }
   },
@@ -215,5 +221,5 @@
       "closedAt": "2026-05-17T03:45:08.711Z"
     }
   ],
-  "savedAt": "2026-05-17T03:48:14.209Z"
+  "savedAt": "2026-05-17T03:48:15.232Z"
 }
