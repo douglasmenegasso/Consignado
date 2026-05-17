@@ -24,6 +24,11 @@
       "code": "7896004700533",
       "name": "Meleato de Enalapril",
       "price": 5.84
+    },
+    "7896181914280": {
+      "code": "7896181914280",
+      "name": "Fosfato Sódico de Prednisolona",
+      "price": 12.62
     }
   },
   "clients": {
@@ -94,5 +99,5 @@
     }
   },
   "closed": [],
-  "savedAt": "2026-05-17T03:34:25.545Z"
+  "savedAt": "2026-05-17T03:34:42.139Z"
 }
