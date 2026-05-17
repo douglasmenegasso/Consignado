@@ -156,12 +156,18 @@
           "name": "Fosfato SÃÂ³dico de Prednisolona",
           "price": 12.62,
           "qty": 1
+        },
+        "7891203058171": {
+          "code": "7891203058171",
+          "name": "Seven Boys pão de forma",
+          "price": 7.65,
+          "qty": 1
         }
       },
-      "total": 12.62,
+      "total": 20.27,
       "status": "open"
     }
   },
   "closed": [],
-  "savedAt": "2026-05-17T03:42:30.377Z"
+  "savedAt": "2026-05-17T03:42:33.008Z"
 }
