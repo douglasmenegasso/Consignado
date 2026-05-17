@@ -19,6 +19,11 @@
       "code": "7896094928046",
       "name": "AAS Protect",
       "price": 3.85
+    },
+    "7896004700533": {
+      "code": "7896004700533",
+      "name": "Meleato de Enalapril",
+      "price": 5.84
     }
   },
   "clients": {
@@ -89,5 +94,5 @@
     }
   },
   "closed": [],
-  "savedAt": "2026-05-17T03:32:21.375Z"
+  "savedAt": "2026-05-17T03:32:48.530Z"
 }
