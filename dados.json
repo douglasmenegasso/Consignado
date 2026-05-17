@@ -234,9 +234,21 @@
           "name": "Bissulfato de clopidogrel",
           "price": 28.9,
           "qty": 1
+        },
+        "7896523215235": {
+          "code": "7896523215235",
+          "name": "Sinvastatina",
+          "price": 35,
+          "qty": 1
+        },
+        "7896094928046": {
+          "code": "7896094928046",
+          "name": "AAS Protect",
+          "price": 3.85,
+          "qty": 1
         }
       },
-      "total": 43.9,
+      "total": 82.75,
       "status": "open"
     }
   },
@@ -275,5 +287,5 @@
       "closedAt": "2026-05-17T03:45:08.711Z"
     }
   ],
-  "savedAt": "2026-05-17T05:58:08.754Z"
+  "savedAt": "2026-05-17T05:58:10.232Z"
 }
