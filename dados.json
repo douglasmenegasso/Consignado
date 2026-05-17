@@ -44,6 +44,11 @@
       "code": "7897429363259",
       "name": "Broa de Linhaça 58% Integral",
       "price": 3.99
+    },
+    "7891203058171": {
+      "code": "7891203058171",
+      "name": "Seven Boys pão de forma",
+      "price": 7.65
     }
   },
   "clients": {
@@ -139,5 +144,5 @@
     }
   },
   "closed": [],
-  "savedAt": "2026-05-17T03:41:21.359Z"
+  "savedAt": "2026-05-17T03:41:55.904Z"
 }
