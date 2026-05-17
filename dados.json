@@ -311,10 +311,10 @@
           "code": "7897429363259",
           "name": "Broa de Linhaça 58% Integral",
           "price": 3.99,
-          "qty": 7
+          "qty": 6
         }
       },
-      "total": 250.49000000000007,
+      "total": 246.50000000000006,
       "status": "open"
     }
   },
@@ -358,5 +358,5 @@
     "recoveryKey": "TOEUTHP8-XV0L",
     "recoveryEmail": "douglas.menegasso@gmail.com"
   },
-  "savedAt": "2026-05-17T17:40:06.742Z"
+  "savedAt": "2026-05-17T17:40:09.263Z"
 }
