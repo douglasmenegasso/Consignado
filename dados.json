@@ -115,12 +115,18 @@
           "name": "Vitamina Senior",
           "price": 39.99,
           "qty": 1
+        },
+        "7896181914280": {
+          "code": "7896181914280",
+          "name": "Fosfato SÃÂ³dico de Prednisolona",
+          "price": 12.62,
+          "qty": 1
         }
       },
-      "total": 39.99,
+      "total": 52.61,
       "status": "open"
     }
   },
   "closed": [],
-  "savedAt": "2026-05-17T03:39:56.343Z"
+  "savedAt": "2026-05-17T03:40:01.545Z"
 }
