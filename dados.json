@@ -27,8 +27,13 @@
     },
     "7896181914280": {
       "code": "7896181914280",
-      "name": "Fosfato SÃ³dico de Prednisolona",
+      "name": "Fosfato SÃÂ³dico de Prednisolona",
       "price": 12.62
+    },
+    "7896714269900": {
+      "code": "7896714269900",
+      "name": "Vitamina Mulher",
+      "price": 58.91
     }
   },
   "clients": {
@@ -99,5 +104,5 @@
     }
   },
   "closed": [],
-  "savedAt": "2026-05-17T03:38:25.537Z"
+  "savedAt": "2026-05-17T03:38:42.912Z"
 }
