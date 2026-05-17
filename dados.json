@@ -9,6 +9,11 @@
       "code": "7897595633675",
       "name": "Bissulfato de clopidogrel",
       "price": 28.9
+    },
+    "7896004700533": {
+      "code": "7896004700533",
+      "name": "Meleato de Enalapril",
+      "price": 9.99
     }
   },
   "clients": {
@@ -60,5 +65,5 @@
     }
   },
   "closed": [],
-  "savedAt": "2026-05-17T03:26:31.734Z"
+  "savedAt": "2026-05-17T03:27:19.238Z"
 }
