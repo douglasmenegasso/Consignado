@@ -306,9 +306,15 @@
           "name": "Vitamina Senior",
           "price": 39.99,
           "qty": 1
+        },
+        "7897429363259": {
+          "code": "7897429363259",
+          "name": "Broa de Linhaça 58% Integral",
+          "price": 3.99,
+          "qty": 1
         }
       },
-      "total": 222.56,
+      "total": 226.55,
       "status": "open"
     }
   },
@@ -352,5 +358,5 @@
     "recoveryKey": "TOEUTHP8-XV0L",
     "recoveryEmail": "douglas.menegasso@gmail.com"
   },
-  "savedAt": "2026-05-17T17:39:23.300Z"
+  "savedAt": "2026-05-17T17:39:56.464Z"
 }
