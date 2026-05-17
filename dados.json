@@ -155,7 +155,7 @@
           "code": "7896181914280",
           "name": "Fosfato SÃÂ³dico de Prednisolona",
           "price": 12.62,
-          "qty": 1
+          "qty": 2
         },
         "7891203058171": {
           "code": "7891203058171",
@@ -176,10 +176,10 @@
           "qty": 2
         }
       },
-      "total": 128.37,
+      "total": 140.99,
       "status": "waiting"
     }
   },
   "closed": [],
-  "savedAt": "2026-05-17T03:42:52.647Z"
+  "savedAt": "2026-05-17T03:42:55.378Z"
 }
