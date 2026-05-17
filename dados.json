@@ -54,6 +54,11 @@
       "code": "7898959897085",
       "name": "Lenço umedecido",
       "price": 3.99
+    },
+    "7894900027013": {
+      "code": "7894900027013",
+      "name": "Coca cola",
+      "price": 15
     }
   },
   "clients": {
@@ -358,5 +363,5 @@
     "recoveryKey": "TOEUTHP8-XV0L",
     "recoveryEmail": "douglas.menegasso@gmail.com"
   },
-  "savedAt": "2026-05-17T17:40:11.301Z"
+  "savedAt": "2026-05-17T17:40:39.588Z"
 }
