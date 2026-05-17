@@ -173,13 +173,13 @@
           "code": "7897595633675",
           "name": "Bissulfato de clopidogrel",
           "price": 28.9,
-          "qty": 1
+          "qty": 2
         }
       },
-      "total": 84.16999999999999,
+      "total": 113.07,
       "status": "waiting"
     }
   },
   "closed": [],
-  "savedAt": "2026-05-17T03:42:46.848Z"
+  "savedAt": "2026-05-17T03:42:50.413Z"
 }
