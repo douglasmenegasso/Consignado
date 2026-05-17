@@ -162,12 +162,18 @@
           "name": "Seven Boys pão de forma",
           "price": 7.65,
           "qty": 1
+        },
+        "7896523215235": {
+          "code": "7896523215235",
+          "name": "Sinvastatina",
+          "price": 35,
+          "qty": 1
         }
       },
-      "total": 20.27,
+      "total": 55.269999999999996,
       "status": "open"
     }
   },
   "closed": [],
-  "savedAt": "2026-05-17T03:42:33.008Z"
+  "savedAt": "2026-05-17T03:42:35.238Z"
 }
