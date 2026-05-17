@@ -10,10 +10,10 @@
       "name": "Bissulfato de clopidogrel",
       "price": 28.9
     },
-    "7896004700533": {
-      "code": "7896004700533",
-      "name": "Meleato de Enalapril",
-      "price": 9.99
+    "7896523215235": {
+      "code": "7896523215235",
+      "name": "Sinvastatina",
+      "price": 35
     }
   },
   "clients": {
@@ -62,8 +62,27 @@
       },
       "total": 116.69999999999999,
       "status": "waiting"
+    },
+    "c_1778952708202": {
+      "clientId": "c_1778952708202",
+      "items": {
+        "7896523215235": {
+          "code": "7896523215235",
+          "name": "Sinvastatina",
+          "price": 35,
+          "qty": 1
+        },
+        "7897595633675": {
+          "code": "7897595633675",
+          "name": "Bissulfato de clopidogrel",
+          "price": 28.9,
+          "qty": 1
+        }
+      },
+      "total": 63.9,
+      "status": "open"
     }
   },
   "closed": [],
-  "savedAt": "2026-05-17T03:27:19.238Z"
+  "savedAt": "2026-05-17T03:27:33.425Z"
 }
