@@ -294,9 +294,15 @@
           "name": "Meleato de Enalapril",
           "price": 5.84,
           "qty": 1
+        },
+        "7896714269900": {
+          "code": "7896714269900",
+          "name": "Vitamina Mulher",
+          "price": 58.91,
+          "qty": 1
         }
       },
-      "total": 5.84,
+      "total": 64.75,
       "status": "open"
     }
   },
@@ -340,5 +346,5 @@
     "recoveryKey": "TOEUTHP8-XV0L",
     "recoveryEmail": "douglas.menegasso@gmail.com"
   },
-  "savedAt": "2026-05-17T17:39:14.916Z"
+  "savedAt": "2026-05-17T17:39:18.395Z"
 }
