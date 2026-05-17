@@ -168,9 +168,15 @@
           "name": "Vitamina Mulher",
           "price": 58.91,
           "qty": 1
+        },
+        "7897429363259": {
+          "code": "7897429363259",
+          "name": "Broa de LinhaÃÂÃÂ§a 58% Integral",
+          "price": 3.99,
+          "qty": 1
         }
       },
-      "total": 144.73,
+      "total": 148.72,
       "status": "open"
     }
   },
@@ -209,5 +215,5 @@
       "closedAt": "2026-05-17T03:45:08.711Z"
     }
   ],
-  "savedAt": "2026-05-17T03:48:11.337Z"
+  "savedAt": "2026-05-17T03:48:14.209Z"
 }
