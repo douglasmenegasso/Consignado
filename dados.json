@@ -126,12 +126,18 @@
           "name": "Fosfato SÃÂ³dico de Prednisolona",
           "price": 12.62,
           "qty": 1
+        },
+        "7897429363259": {
+          "code": "7897429363259",
+          "name": "Broa de Linhaça 58% Integral",
+          "price": 3.99,
+          "qty": 1
         }
       },
-      "total": 52.61,
+      "total": 56.6,
       "status": "open"
     }
   },
   "closed": [],
-  "savedAt": "2026-05-17T03:41:09.899Z"
+  "savedAt": "2026-05-17T03:41:10.947Z"
 }
