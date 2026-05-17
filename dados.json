@@ -147,6 +147,19 @@
       },
       "total": 64.25,
       "status": "open"
+    },
+    "c_1778952716290": {
+      "clientId": "c_1778952716290",
+      "items": {
+        "7891058000943": {
+          "code": "7891058000943",
+          "name": "Succinato de metoprolol",
+          "price": 15,
+          "qty": 1
+        }
+      },
+      "total": 15,
+      "status": "open"
     }
   },
   "closed": [
@@ -184,5 +197,5 @@
       "closedAt": "2026-05-17T03:43:06.881Z"
     }
   ],
-  "savedAt": "2026-05-17T03:43:21.359Z"
+  "savedAt": "2026-05-17T03:43:23.047Z"
 }
