@@ -198,9 +198,21 @@
           "name": "Sinvastatina",
           "price": 35,
           "qty": 1
+        },
+        "7897595633675": {
+          "code": "7897595633675",
+          "name": "Bissulfato de clopidogrel",
+          "price": 28.9,
+          "qty": 1
+        },
+        "7891058000943": {
+          "code": "7891058000943",
+          "name": "Succinato de metoprolol",
+          "price": 15,
+          "qty": 1
         }
       },
-      "total": 272.59000000000003,
+      "total": 316.49,
       "status": "open"
     }
   },
@@ -239,5 +251,5 @@
       "closedAt": "2026-05-17T03:45:08.711Z"
     }
   ],
-  "savedAt": "2026-05-17T03:48:21.950Z"
+  "savedAt": "2026-05-17T03:48:23.492Z"
 }
