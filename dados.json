@@ -246,9 +246,21 @@
           "name": "AAS Protect",
           "price": 3.85,
           "qty": 1
+        },
+        "7896004700533": {
+          "code": "7896004700533",
+          "name": "Meleato de Enalapril",
+          "price": 5.84,
+          "qty": 1
+        },
+        "7896181914280": {
+          "code": "7896181914280",
+          "name": "Fosfato Sódico de Prednisolona",
+          "price": 12.62,
+          "qty": 1
         }
       },
-      "total": 82.75,
+      "total": 101.21000000000001,
       "status": "open"
     }
   },
@@ -287,5 +299,5 @@
       "closedAt": "2026-05-17T03:45:08.711Z"
     }
   ],
-  "savedAt": "2026-05-17T05:58:10.232Z"
+  "savedAt": "2026-05-17T05:58:11.176Z"
 }
