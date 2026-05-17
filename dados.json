@@ -228,9 +228,15 @@
           "name": "Succinato de metoprolol",
           "price": 15,
           "qty": 1
+        },
+        "7897595633675": {
+          "code": "7897595633675",
+          "name": "Bissulfato de clopidogrel",
+          "price": 28.9,
+          "qty": 1
         }
       },
-      "total": 15,
+      "total": 43.9,
       "status": "open"
     }
   },
@@ -269,5 +275,5 @@
       "closedAt": "2026-05-17T03:45:08.711Z"
     }
   ],
-  "savedAt": "2026-05-17T05:58:07.898Z"
+  "savedAt": "2026-05-17T05:58:08.754Z"
 }
