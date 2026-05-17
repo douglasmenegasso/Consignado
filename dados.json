@@ -27,7 +27,7 @@
     },
     "7896181914280": {
       "code": "7896181914280",
-      "name": "Fosfato SÃÂ³dico de Prednisolona",
+      "name": "Fosfato SÃÂÃÂ³dico de Prednisolona",
       "price": 12.62
     },
     "7896714269900": {
@@ -42,12 +42,12 @@
     },
     "7897429363259": {
       "code": "7897429363259",
-      "name": "Broa de Linhaça 58% Integral",
+      "name": "Broa de LinhaÃ§a 58% Integral",
       "price": 3.99
     },
     "7891203058171": {
       "code": "7891203058171",
-      "name": "Seven Boys pão de forma",
+      "name": "Seven Boys pÃ£o de forma",
       "price": 7.65
     }
   },
@@ -128,19 +128,19 @@
         },
         "7896181914280": {
           "code": "7896181914280",
-          "name": "Fosfato SÃÂ³dico de Prednisolona",
+          "name": "Fosfato SÃÂÃÂ³dico de Prednisolona",
           "price": 12.62,
           "qty": 1
         },
         "7897429363259": {
           "code": "7897429363259",
-          "name": "Broa de Linhaça 58% Integral",
+          "name": "Broa de LinhaÃ§a 58% Integral",
           "price": 3.99,
           "qty": 1
         },
         "7891203058171": {
           "code": "7891203058171",
-          "name": "Seven Boys pão de forma",
+          "name": "Seven Boys pÃ£o de forma",
           "price": 7.65,
           "qty": 1
         }
@@ -148,41 +148,18 @@
       "total": 64.25,
       "status": "open"
     },
-    "c_1778952716290": {
-      "clientId": "c_1778952716290",
-      "items": {
-        "7891058000943": {
-          "code": "7891058000943",
-          "name": "Succinato de metoprolol",
-          "price": 15,
-          "qty": 2
-        },
-        "7896523215235": {
-          "code": "7896523215235",
-          "name": "Sinvastatina",
-          "price": 35,
-          "qty": 3
-        }
-      },
-      "total": 135,
-      "status": "waiting"
-    }
-  },
-  "closed": [
-    {
+    "c_1778952690646": {
       "clientId": "c_1778952690646",
-      "clientName": "Klara",
-      "clientPhone": "",
       "items": {
         "7896181914280": {
           "code": "7896181914280",
-          "name": "Fosfato SÃÂ³dico de Prednisolona",
+          "name": "Fosfato SÃÂÃÂ³dico de Prednisolona",
           "price": 12.62,
           "qty": 2
         },
         "7891203058171": {
           "code": "7891203058171",
-          "name": "Seven Boys pão de forma",
+          "name": "Seven Boys pÃ£o de forma",
           "price": 7.65,
           "qty": 3
         },
@@ -200,8 +177,9 @@
         }
       },
       "total": 140.99,
-      "closedAt": "2026-05-17T03:43:06.881Z"
+      "status": "waiting"
     }
-  ],
-  "savedAt": "2026-05-17T03:44:21.359Z"
+  },
+  "closed": [],
+  "savedAt": "2026-05-17T03:44:25.543Z"
 }
