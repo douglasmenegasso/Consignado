@@ -155,7 +155,7 @@
           "code": "7896004700533",
           "name": "Meleato de Enalapril",
           "price": 5.84,
-          "qty": 1
+          "qty": 2
         },
         "7896714269887": {
           "code": "7896714269887",
@@ -180,9 +180,15 @@
           "name": "Seven Boys pÃÂÃÂ£o de forma",
           "price": 7.65,
           "qty": 1
+        },
+        "7896181914280": {
+          "code": "7896181914280",
+          "name": "Fosfato SÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³dico de Prednisolona",
+          "price": 12.62,
+          "qty": 1
         }
       },
-      "total": 215.28,
+      "total": 233.74,
       "status": "open"
     }
   },
@@ -221,5 +227,5 @@
       "closedAt": "2026-05-17T03:45:08.711Z"
     }
   ],
-  "savedAt": "2026-05-17T03:48:19.078Z"
+  "savedAt": "2026-05-17T03:48:20.527Z"
 }
