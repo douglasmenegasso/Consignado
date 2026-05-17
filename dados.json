@@ -106,8 +106,21 @@
       },
       "total": 63.9,
       "status": "open"
+    },
+    "c_1778952723034": {
+      "clientId": "c_1778952723034",
+      "items": {
+        "7896714269887": {
+          "code": "7896714269887",
+          "name": "Vitamina Senior",
+          "price": 39.99,
+          "qty": 1
+        }
+      },
+      "total": 39.99,
+      "status": "open"
     }
   },
   "closed": [],
-  "savedAt": "2026-05-17T03:39:41.159Z"
+  "savedAt": "2026-05-17T03:39:56.343Z"
 }
