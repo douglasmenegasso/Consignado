@@ -317,9 +317,15 @@
           "name": "Broa de Linhaça 58% Integral",
           "price": 3.99,
           "qty": 5
+        },
+        "7894900027013": {
+          "code": "7894900027013",
+          "name": "Coca cola",
+          "price": 15,
+          "qty": 1
         }
       },
-      "total": 242.51000000000005,
+      "total": 257.51000000000005,
       "status": "open"
     }
   },
@@ -363,5 +369,5 @@
     "recoveryKey": "TOEUTHP8-XV0L",
     "recoveryEmail": "douglas.menegasso@gmail.com"
   },
-  "savedAt": "2026-05-17T17:40:39.588Z"
+  "savedAt": "2026-05-17T17:40:41.614Z"
 }
