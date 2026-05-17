@@ -29,6 +29,11 @@
       "code": "7896181914280",
       "name": "Fosfato Sódico de Prednisolona",
       "price": 12.62
+    },
+    "7891203058171": {
+      "code": "7891203058171",
+      "name": "Panco Maisena",
+      "price": 7.36
     }
   },
   "clients": {
@@ -99,5 +104,5 @@
     }
   },
   "closed": [],
-  "savedAt": "2026-05-17T03:35:21.361Z"
+  "savedAt": "2026-05-17T03:35:27.787Z"
 }
