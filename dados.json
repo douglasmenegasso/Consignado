@@ -285,6 +285,19 @@
       },
       "total": 171.76000000000002,
       "status": "open"
+    },
+    "c_1779039515672": {
+      "clientId": "c_1779039515672",
+      "items": {
+        "7896004700533": {
+          "code": "7896004700533",
+          "name": "Meleato de Enalapril",
+          "price": 5.84,
+          "qty": 1
+        }
+      },
+      "total": 5.84,
+      "status": "open"
     }
   },
   "closed": [
@@ -327,5 +340,5 @@
     "recoveryKey": "TOEUTHP8-XV0L",
     "recoveryEmail": "douglas.menegasso@gmail.com"
   },
-  "savedAt": "2026-05-17T17:39:05.158Z"
+  "savedAt": "2026-05-17T17:39:14.916Z"
 }
