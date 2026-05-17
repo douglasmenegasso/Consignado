@@ -258,9 +258,15 @@
           "name": "Fosfato Sódico de Prednisolona",
           "price": 12.62,
           "qty": 1
+        },
+        "7896714269900": {
+          "code": "7896714269900",
+          "name": "Vitamina Mulher",
+          "price": 58.91,
+          "qty": 1
         }
       },
-      "total": 101.21000000000001,
+      "total": 160.12,
       "status": "open"
     }
   },
@@ -299,5 +305,5 @@
       "closedAt": "2026-05-17T03:45:08.711Z"
     }
   ],
-  "savedAt": "2026-05-17T05:58:11.176Z"
+  "savedAt": "2026-05-17T05:58:13.220Z"
 }
